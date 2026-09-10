@@ -57,7 +57,7 @@ export function Timeline() {
             if (!mediaId) return
             const rect = e.currentTarget.getBoundingClientRect()
             const y = e.clientY - rect.top - 28
-            const trackIndex = Math.max(0, Math.min(tracks.length - 1, Math.floor(y / 64)))
+            const trackIndex = Math.max(0, Math.min(tracks.length - 1, Math.floor(y / 52)))
             const track = tracks[trackIndex]
             const t = xToTime(e.clientX - rect.left, pps, 0)
             actions.dropMediaOnTimeline(mediaId, track?.id ?? null, t)
