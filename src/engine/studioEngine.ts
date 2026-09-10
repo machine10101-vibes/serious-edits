@@ -2,6 +2,7 @@ import type { Clip, Deck, FitMode, LookId, MediaAsset, Track } from '../types'
 import { anySolo, clipAtTime, clipEnd, mediaLocalTime, trackAudible } from '../lib/clips'
 import { applyLook, drawLowerThird } from '../lib/looks'
 import { clamp, equalPower, fadeGain, filterFromKnob } from '../lib/mix'
+import { mediaKindFromFile } from '../lib/mediaFiles'
 import { pickRecorderMime, VIDEO_MIME_CANDIDATES } from '../lib/picture'
 import { drawVisual } from '../lib/visuals'
 import { encodeWav } from '../lib/waveform'
@@ -977,9 +978,27 @@ function loadVideo(url: string): Promise<HTMLVideoElement> {
     video.crossOrigin = 'anonymous'
     video.muted = true
     video.playsInline = true
+    video.setAttribute('playsinline', 'true')
     video.preload = 'auto'
-    video.onloadedmetadata = () => resolve(video)
-    video.onerror = () => reject(new Error('video'))
+    video.style.position = 'fixed'
+    video.style.left = '-9999px'
+    video.style.width = '2px'
+    video.style.height = '2px'
+    document.body.appendChild(video)
+    const fail = () => {
+      window.clearTimeout(timer)
+      reject(new Error('video'))
+    }
+    const ok = () => {
+      window.clearTimeout(timer)
+      video.onloadedmetadata = null
+      video.onerror = null
+      resolve(video)
+    }
+    const timer = window.setTimeout(fail, 20000)
+    video.onloadedmetadata = ok
+    video.onerror = fail
+    video.load()
   })
 }
 
@@ -1037,15 +1056,15 @@ function whichHue(color: string): number {
 }
 
 export function isAudioFile(file: File): boolean {
-  return file.type.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a|aac|aiff)$/i.test(file.name)
+  return mediaKindFromFile(file) === 'audio'
 }
 
 export function isVideoFile(file: File): boolean {
-  return file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name)
+  return mediaKindFromFile(file) === 'video'
 }
 
 export function isImageFile(file: File): boolean {
-  return file.type.startsWith('image/') || /\.(png|jpg|jpeg|gif|webp)$/i.test(file.name)
+  return mediaKindFromFile(file) === 'image'
 }
 
 export const engine = new StudioEngine()

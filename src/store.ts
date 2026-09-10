@@ -1,10 +1,11 @@
 import { useSyncExternalStore } from 'react'
-import { engine, isAudioFile, isImageFile, isVideoFile, peaksFromBuffer } from './engine/studioEngine'
+import { engine, peaksFromBuffer } from './engine/studioEngine'
 import { uid } from './lib/id'
 import { anySolo, clipEnd, createClip, projectLength, splitClip, trimClip } from './lib/clips'
 import { buildDemoStems, samplesToBuffer } from './lib/demoAudio'
 import { encodeMp3 } from './lib/encodeMp3'
 import { autoCrossfadeTrack, scoreVisuals } from './lib/looks'
+import { mediaKindFromFile } from './lib/mediaFiles'
 import { clamp } from './lib/mix'
 import { aspectExportSize, audioMixLength, extensionForMime, fitPictureClips } from './lib/picture'
 import { clampZoom, secondsPerBeat, snapTime } from './lib/time'
@@ -757,10 +758,16 @@ export const actions = {
   },
 
   async importFiles(files: FileList | File[]) {
-    await engine.ensure()
     const list = [...files]
-    for (const file of list) {
-      const kind = isAudioFile(file) ? 'audio' : isVideoFile(file) ? 'video' : isImageFile(file) ? 'image' : null
+    const usable = list.filter((file) => mediaKindFromFile(file))
+    if (!usable.length) {
+      toast('Need a video or a song', 'Use MP4, MOV, MP3, WAV, or similar.')
+      return
+    }
+    await engine.ensure()
+    let imported = 0
+    for (const file of usable) {
+      const kind = mediaKindFromFile(file)
       if (!kind) continue
       const id = uid('media')
       set({ busy: `Importing ${file.name}` })
@@ -782,14 +789,23 @@ export const actions = {
         set({ assets: [...state.assets, asset], selectedMediaId: id, busy: null })
         const trackItem = state.tracks.find((t) => t.kind === (kind === 'audio' ? 'audio' : 'video'))
         if (trackItem) actions.addClip(id, trackItem.id, lastEnd(trackItem.id))
-        if (kind === 'video') toast('Video on the picture track', 'Import a song, mute picture audio if needed, then Export MP4.')
-        else if (kind === 'audio') toast('Song on the mix', 'Export MP3 for audio or MP4 for the video.')
+        imported += 1
+        const audioIds = state.tracks.filter((track) => track.kind === 'audio').map((track) => track.id)
+        const videoIds = state.tracks.filter((track) => track.kind === 'video').map((track) => track.id)
+        const mix = audioMixLength(state.clips, audioIds, 0)
+        if (mix > 0.2 && state.clips.some((clip) => videoIds.includes(clip.trackId))) {
+          const clips = fitPictureClips(state.clips, videoIds, mix)
+          set({ clips, project: { ...state.project, duration: projectLength(clips) } })
+        }
+        if (kind === 'audio') toast('Song on the mix', 'Export MP3 for audio or MP4 for the finished video.')
+        else if (kind === 'video') toast('Video on the picture track', 'Import a song, then Export MP4 or MP3.')
         else toast('Imported', file.name)
       } catch {
         set({ busy: null })
         toast('Could not import', file.name)
       }
     }
+    if (!imported) set({ busy: null })
   },
 
   async loadDemo() {

@@ -27,12 +27,12 @@ export function Stage() {
                 <button type="button" className="play" onClick={() => void actions.loadDemo()}>
                   Load demo session
                 </button>
-                <button type="button" className="chip" onClick={() => actions.openImporter('video')}>
+                <label className="chip" htmlFor="se-import-video">
                   Import video
-                </button>
-                <button type="button" className="chip" onClick={() => actions.openImporter('audio')}>
+                </label>
+                <label className="chip" htmlFor="se-import-audio">
                   Import music
-                </button>
+                </label>
               </div>
             </div>
           )}

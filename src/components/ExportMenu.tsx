@@ -12,7 +12,7 @@ export function ExportMenu() {
     <div className="help-scrim" onClick={actions.toggleExport}>
       <div className="help-card export-card" onClick={(e) => e.stopPropagation()}>
         <h2>Export the mix</h2>
-        <p>Bounce the timeline into a file you can post or send. Video uses the picture, looks, and live mix. Audio is a dry mixdown of faders, pans, and fades.</p>
+        <p>Import a video, drop a song under it, then bounce MP4 or MP3.</p>
         <div className="export-grid">
           <button type="button" className="play" disabled={Boolean(exporting)} onClick={() => void actions.exportVideo()}>
             Export MP4

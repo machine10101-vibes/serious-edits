@@ -67,9 +67,9 @@ export function TopBar() {
         <button type="button" className="ghost" onClick={actions.newProject}>
           New
         </button>
-        <button type="button" className="ghost" onClick={() => actions.openImporter('any')}>
+        <label className="ghost" htmlFor="se-import-any">
           Import
-        </button>
+        </label>
         <button type="button" className="export-btn" onClick={actions.toggleExport}>
           Export
         </button>

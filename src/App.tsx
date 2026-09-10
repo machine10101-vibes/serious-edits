@@ -4,6 +4,7 @@ import { Dock } from './components/Dock'
 import { ExportMenu } from './components/ExportMenu'
 import { Inspector } from './components/Inspector'
 import { Library } from './components/Library'
+import { MediaInputs } from './components/MediaInputs'
 import { Mixer } from './components/Mixer'
 import { PictureBar } from './components/PictureBar'
 import { Shortcuts } from './components/Shortcuts'
@@ -11,6 +12,7 @@ import { Stage } from './components/Stage'
 import { Timeline } from './components/Timeline'
 import { TopBar } from './components/TopBar'
 import { Transport } from './components/Transport'
+import { hasImportableFiles } from './lib/mediaFiles'
 import { actions, getState, useStudio } from './store'
 
 export function App() {
@@ -76,10 +78,10 @@ export function App() {
       if (event.key === '2') void actions.toggleDeck('b')
     }
     const onDrop = (event: DragEvent) => {
-      if (!event.dataTransfer?.files?.length) return
-      if ([...event.dataTransfer.files].every((f) => f.type === '')) return
+      const files = event.dataTransfer?.files
+      if (!files?.length || !hasImportableFiles(files)) return
       event.preventDefault()
-      void actions.importFiles(event.dataTransfer.files)
+      void actions.importFiles(files)
     }
     const prevent = (event: DragEvent) => {
       event.preventDefault()
@@ -112,39 +114,7 @@ export function App() {
       <Dock />
       <Shortcuts />
       <ExportMenu />
-      <input
-        id="se-import-audio"
-        type="file"
-        hidden
-        multiple
-        accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.aiff"
-        onChange={(e) => {
-          if (e.target.files) void actions.importFiles(e.target.files)
-          e.target.value = ''
-        }}
-      />
-      <input
-        id="se-import-video"
-        type="file"
-        hidden
-        multiple
-        accept="video/*,image/*,.mp4,.mov,.webm,.m4v,.png,.jpg,.jpeg,.webp"
-        onChange={(e) => {
-          if (e.target.files) void actions.importFiles(e.target.files)
-          e.target.value = ''
-        }}
-      />
-      <input
-        id="se-import-any"
-        type="file"
-        hidden
-        multiple
-        accept="audio/*,video/*,image/*"
-        onChange={(e) => {
-          if (e.target.files) void actions.importFiles(e.target.files)
-          e.target.value = ''
-        }}
-      />
+      <MediaInputs />
       {panel && (
         <button type="button" className="sheet-scrim" aria-label="Close panel" onClick={() => actions.setPanel(null)} />
       )}

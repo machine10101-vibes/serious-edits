@@ -23,17 +23,17 @@ export function Library() {
         <button type="button" className="sheet-close" onClick={() => actions.setPanel(null)}>
           Done
         </button>
-        <button type="button" className="icon-btn" onClick={() => actions.openImporter('any')} title="Import media">
+        <label className="icon-btn" htmlFor="se-import-any" title="Import media">
           <ImportIcon />
-        </button>
+        </label>
       </div>
       <div className="import-row">
-        <button type="button" className="chip" onClick={() => actions.openImporter('video')}>
+        <label className="chip" htmlFor="se-import-video">
           Video
-        </button>
-        <button type="button" className="chip" onClick={() => actions.openImporter('audio')}>
+        </label>
+        <label className="chip" htmlFor="se-import-audio">
           Music
-        </button>
+        </label>
       </div>
       <div className="filters">
         {(['all', 'audio', 'video', 'visual'] as const).map((id) => (
