@@ -7,6 +7,7 @@ export function Stage() {
   const clips = useStudio((s) => s.clips)
   const busy = useStudio((s) => s.busy)
   const name = useStudio((s) => s.project.name)
+  const aspect = useStudio((s) => s.project.aspect)
 
   useEffect(() => {
     engine.attachCanvas(canvasRef.current)
@@ -16,23 +17,25 @@ export function Stage() {
   return (
     <section className="stage">
       <div className="stage-frame">
-        <canvas ref={canvasRef} className="stage-canvas" />
-        {clips.length === 0 && (
-          <div className="stage-empty">
-            <p className="serif">The booth is yours.</p>
-            <p>Import audio and video, or load the demo session to mix a full night in seconds.</p>
-            <div className="empty-actions">
-              <button type="button" className="play" onClick={() => void actions.loadDemo()}>
-                Load demo session
-              </button>
+        <div className="stage-aspect" data-ratio={aspect}>
+          <canvas ref={canvasRef} className="stage-canvas" />
+          {clips.length === 0 && (
+            <div className="stage-empty">
+              <p className="serif">The booth is yours.</p>
+              <p>Import audio and video, or load the demo session to mix a full night in seconds.</p>
+              <div className="empty-actions">
+                <button type="button" className="play" onClick={() => void actions.loadDemo()}>
+                  Load demo session
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
         {busy && <div className="busy">{busy}</div>}
       </div>
       <div className="stage-caption">
         <span>{name}</span>
-        <span>Program output</span>
+        <span>{aspect} program output</span>
       </div>
     </section>
   )

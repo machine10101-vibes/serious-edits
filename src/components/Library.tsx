@@ -45,32 +45,36 @@ export function Library() {
       </div>
       <div className="asset-list">
         {shown.map((asset) => (
-          <button
-            key={asset.id}
-            type="button"
-            className={selected === asset.id ? 'asset on' : 'asset'}
-            draggable
-            onClick={() => actions.selectMedia(asset.id)}
-            onDragStart={(e) => {
-              e.dataTransfer.setData('text/media-id', asset.id)
-              e.dataTransfer.effectAllowed = 'copy'
-            }}
-            onDoubleClick={() => {
-              if (asset.kind === 'audio') actions.loadToDeck('a', asset.id)
-              else actions.dropMediaOnTimeline(asset.id, null, 0)
-            }}
-          >
-            <span className="swatch" style={{ background: asset.color }} />
-            <span className="asset-meta">
-              <strong>{asset.name}</strong>
-              <em>
-                {asset.kind} · {asset.duration.toFixed(1)}s
-              </em>
-            </span>
-          </button>
+          <div key={asset.id} className={selected === asset.id ? 'asset-row on' : 'asset-row'}>
+            <button
+              type="button"
+              className="asset"
+              draggable
+              onClick={() => actions.selectMedia(asset.id)}
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/media-id', asset.id)
+                e.dataTransfer.effectAllowed = 'copy'
+              }}
+              onDoubleClick={() => {
+                if (asset.kind === 'audio') actions.loadToDeck('a', asset.id)
+                else actions.dropMediaOnTimeline(asset.id, null, 0)
+              }}
+            >
+              <span className="swatch" style={{ background: asset.color }} />
+              <span className="asset-meta">
+                <strong>{asset.name}</strong>
+                <em>
+                  {asset.kind} · {asset.duration.toFixed(1)}s
+                </em>
+              </span>
+            </button>
+            <button type="button" className="add-hit" onClick={() => actions.addAtPlayhead(asset.id)}>
+              +
+            </button>
+          </div>
         ))}
       </div>
-      <p className="hint">Drag onto the timeline or a DJ deck. Drop files anywhere to import.</p>
+      <p className="hint">Tap + to drop at the playhead. Drag on desktop. Drop files anywhere to import.</p>
     </aside>
   )
 }

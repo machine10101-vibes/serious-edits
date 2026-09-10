@@ -47,14 +47,20 @@ export function TopBar() {
         />
       </label>
 
-      <button type="button" className={snap ? 'chip on' : 'chip'} onClick={actions.toggleSnap}>
-        Snap
-      </button>
+        <button type="button" className={snap ? 'chip on' : 'chip'} onClick={actions.toggleSnap}>
+          Snap
+        </button>
+        <button type="button" className="chip" onClick={actions.tapTempo}>
+          Tap
+        </button>
       <button type="button" className={loop ? 'chip on' : 'chip'} onClick={actions.toggleLoop}>
         <LoopIcon /> Loop
       </button>
 
       <div className="top-actions">
+        <button type="button" className="ghost" onClick={actions.undo}>
+          Undo
+        </button>
         <button type="button" className="ghost" onClick={() => void actions.loadDemo()}>
           Demo
         </button>
@@ -78,6 +84,9 @@ export function TopBar() {
         <button type="button" className="play" onClick={() => void actions.togglePlay()}>
           {playing ? <PauseIcon /> : <PlayIcon />}
           {playing ? 'Pause' : 'Play'}
+        </button>
+        <button type="button" className="ghost" onClick={actions.toggleHelp} title="Shortcuts">
+          ?
         </button>
         <button type="button" className="ghost" onClick={actions.stop}>
           <StopIcon />

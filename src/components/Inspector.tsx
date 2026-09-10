@@ -14,7 +14,15 @@ export function Inspector() {
         <div className="panel-head">
           <h2>Inspector</h2>
         </div>
-        <p className="hint">Select a clip to fade, blend, retitle, or reshape it.</p>
+        <p className="hint">Select a clip, or drop a marker and score the picture to the beat.</p>
+        <div className="inspect-actions">
+          <button type="button" className="chip" onClick={actions.dropMarker}>
+            Marker
+          </button>
+          <button type="button" className="chip" onClick={actions.scorePicture}>
+            Score picture
+          </button>
+        </div>
       </aside>
     )
   }

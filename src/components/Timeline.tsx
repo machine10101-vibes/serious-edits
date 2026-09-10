@@ -1,5 +1,5 @@
 import type { CSSProperties, PointerEvent, UIEvent } from 'react'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { clipEnd } from '../lib/clips'
 import { formatTimecode, timeToX, timelineWidth, xToTime } from '../lib/time'
 import { actions, useStudio } from '../store'
@@ -9,6 +9,7 @@ export function Timeline() {
   const tracks = useStudio((s) => s.tracks)
   const clips = useStudio((s) => s.clips)
   const assets = useStudio((s) => s.assets)
+  const markers = useStudio((s) => s.markers)
   const pps = useStudio((s) => s.pixelsPerSecond)
   const time = useStudio((s) => s.time)
   const duration = useStudio((s) => s.project.duration)
@@ -18,9 +19,21 @@ export function Timeline() {
   const loop = useStudio((s) => s.loop)
   const loopStart = useStudio((s) => s.loopStart)
   const loopEnd = useStudio((s) => s.loopEnd)
+  const follow = useStudio((s) => s.follow)
+  const playing = useStudio((s) => s.playing)
   const scroller = useRef<HTMLDivElement>(null)
   const width = timelineWidth(duration, pps)
   const beats = Math.ceil((duration * bpm) / 60)
+
+  useEffect(() => {
+    const el = scroller.current
+    if (!el || !follow || !playing) return
+    const x = time * pps
+    const view = el.clientWidth
+    if (x - el.scrollLeft < 64 || x - el.scrollLeft > view - 80) {
+      el.scrollLeft = Math.max(0, x - view * 0.35)
+    }
+  }, [time, follow, playing, pps])
 
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     actions.setScroll(event.currentTarget.scrollLeft)
@@ -76,6 +89,25 @@ export function Timeline() {
               style={{ left: loopStart * pps, width: (loopEnd - loopStart) * pps }}
             />
           )}
+          {markers.map((marker) => (
+            <button
+              key={marker.id}
+              type="button"
+              className="marker"
+              style={{ left: marker.time * pps }}
+              title={marker.label}
+              onClick={(e) => {
+                e.stopPropagation()
+                actions.seekMarker(marker.id)
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation()
+                actions.removeMarker(marker.id)
+              }}
+            >
+              {marker.label}
+            </button>
+          ))}
           {tracks.map((track) => (
             <div key={track.id} className="lane" style={{ ['--lane']: track.color } as CSSProperties}>
               {clips

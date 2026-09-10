@@ -1,5 +1,6 @@
-import type { Clip, Deck, MediaAsset, Track } from '../types'
+import type { Clip, Deck, LookId, MediaAsset, Track } from '../types'
 import { anySolo, clipAtTime, clipEnd, trackAudible } from '../lib/clips'
+import { applyLook, drawLowerThird } from '../lib/looks'
 import { clamp, equalPower, fadeGain, filterFromKnob } from '../lib/mix'
 import { drawVisual } from '../lib/visuals'
 import { encodeWav } from '../lib/waveform'
@@ -26,6 +27,25 @@ interface DeckGraph {
   startedAt: number
   origin: number
   video?: HTMLVideoElement
+}
+
+interface TrackChain {
+  input: GainNode
+  vol: GainNode
+  pan: StereoPannerNode
+  low: BiquadFilterNode
+  mid: BiquadFilterNode
+  high: BiquadFilterNode
+  filter: BiquadFilterNode
+  wet: GainNode
+}
+
+interface PictureState {
+  look: LookId
+  reactive: boolean
+  subtitle: string
+  metronome: boolean
+  bpm: number
 }
 
 export interface EngineSnapshot {
@@ -68,6 +88,15 @@ class StudioEngine {
     b: emptyDeck(),
     xf: 0.5,
   })
+  private getPicture: () => PictureState = () => ({
+    look: 'clean',
+    reactive: true,
+    subtitle: '',
+    metronome: false,
+    bpm: 120,
+  })
+  private chains = new Map<string, TrackChain>()
+  private click: AudioBuffer | null = null
   private mode: 'studio' | 'dj' = 'studio'
   deckA: DeckGraph | null = null
   deckB: DeckGraph | null = null
@@ -122,6 +151,7 @@ class StudioEngine {
       this.delayGain.connect(this.compressor)
       this.deckA = this.makeDeckGraph()
       this.deckB = this.makeDeckGraph()
+      this.click = makeClick(ctx)
     }
     if (this.ctx.state === 'suspended') await this.ctx.resume()
     this.startLoop()
@@ -133,11 +163,13 @@ class StudioEngine {
     getClips: () => Clip[]
     getAssets: () => MediaAsset[]
     getDecks: () => { a: Deck; b: Deck; xf: number }
+    getPicture: () => PictureState
   }): void {
     this.getTracks = opts.getTracks
     this.getClips = opts.getClips
     this.getAssets = opts.getAssets
     this.getDecks = opts.getDecks
+    this.getPicture = opts.getPicture
   }
 
   setMode(mode: 'studio' | 'dj'): void {
@@ -244,6 +276,27 @@ class StudioEngine {
     if (this.mode === 'studio') this.scheduleTimeline()
   }
 
+  updateLiveTracks(): void {
+    if (!this.ctx) return
+    const tracks = this.getTracks()
+    const soloed = anySolo(tracks)
+    const ids = new Set(tracks.map((track) => track.id))
+    for (const [id, chain] of this.chains) {
+      if (!ids.has(id)) {
+        try {
+          chain.input.disconnect()
+        } catch {
+          /* already gone */
+        }
+        this.chains.delete(id)
+      }
+    }
+    for (const track of tracks) {
+      const chain = this.chains.get(track.id)
+      if (chain) this.applyTrack(chain, track, soloed)
+    }
+  }
+
   private scheduleTimeline(): void {
     if (!this.ctx || !this.master) return
     const now = this.ctx.currentTime
@@ -251,9 +304,11 @@ class StudioEngine {
     const tracks = this.getTracks()
     const clips = this.getClips()
     const soloed = anySolo(tracks)
+    this.pruneChains(tracks)
+    for (const track of tracks) this.getOrMakeChain(track, soloed)
     for (const clip of clips) {
       const track = tracks.find((tr) => tr.id === clip.trackId)
-      if (!track || !trackAudible(track, soloed)) continue
+      if (!track) continue
       const media = this.media.get(clip.mediaId)
       if (!media?.buffer) continue
       const start = clip.start
@@ -263,8 +318,7 @@ class StudioEngine {
       source.buffer = media.buffer
       source.playbackRate.value = clip.playbackRate
       const gain = this.ctx.createGain()
-      const chain = this.makeTrackChain(track)
-      gain.connect(chain)
+      gain.connect(this.getOrMakeChain(track, soloed))
       source.connect(gain)
       const offset = clip.offset + Math.max(0, t0 - start) * clip.playbackRate
       const when = now + Math.max(0, start - t0)
@@ -278,9 +332,72 @@ class StudioEngine {
       }
       this.sources.push({ source, gain })
     }
+    if (this.getPicture().metronome) this.scheduleMetronome(now, t0)
   }
 
-  private makeTrackChain(track: Track): GainNode {
+  private scheduleMetronome(now: number, t0: number): void {
+    if (!this.ctx || !this.click || !this.master) return
+    const bpm = this.getPicture().bpm || 120
+    const step = 60 / bpm
+    const startBeat = Math.ceil(t0 / step - 0.0001)
+    for (let i = startBeat; i * step < this.projectTimeLength; i++) {
+      const at = i * step
+      if (at < t0) continue
+      const source = this.ctx.createBufferSource()
+      source.buffer = this.click
+      const gain = this.ctx.createGain()
+      gain.gain.value = i % 4 === 0 ? 0.28 : 0.12
+      source.connect(gain)
+      gain.connect(this.master)
+      source.start(now + (at - t0))
+      this.sources.push({ source, gain })
+    }
+  }
+
+  private pruneChains(tracks: Track[]): void {
+    const ids = new Set(tracks.map((track) => track.id))
+    for (const [id, chain] of this.chains) {
+      if (ids.has(id)) continue
+      try {
+        chain.input.disconnect()
+      } catch {
+        /* already gone */
+      }
+      this.chains.delete(id)
+    }
+  }
+
+  private getOrMakeChain(track: Track, soloed: boolean): GainNode {
+    let chain = this.chains.get(track.id)
+    if (!chain) {
+      chain = this.makeTrackChain(track)
+      this.chains.set(track.id, chain)
+    }
+    this.applyTrack(chain, track, soloed)
+    return chain.input
+  }
+
+  private applyTrack(chain: TrackChain, track: Track, soloed: boolean): void {
+    if (!this.ctx) return
+    const audible = trackAudible(track, soloed)
+    const now = this.ctx.currentTime
+    chain.vol.gain.setTargetAtTime(audible ? track.volume : 0, now, 0.03)
+    chain.pan.pan.setTargetAtTime(track.pan, now, 0.03)
+    chain.low.gain.setTargetAtTime(track.eq.low, now, 0.03)
+    chain.mid.gain.setTargetAtTime(track.eq.mid, now, 0.03)
+    chain.high.gain.setTargetAtTime(track.eq.high, now, 0.03)
+    chain.wet.gain.setTargetAtTime(track.delay * 0.5, now, 0.04)
+    const spec = filterFromKnob(track.filter)
+    if (!spec) {
+      chain.filter.type = 'allpass'
+      chain.filter.frequency.value = 10000
+    } else {
+      chain.filter.type = spec.type
+      chain.filter.frequency.value = spec.freq
+    }
+  }
+
+  private makeTrackChain(track: Track): TrackChain {
     const ctx = this.ctx!
     const input = ctx.createGain()
     const vol = ctx.createGain()
@@ -301,19 +418,13 @@ class StudioEngine {
     high.frequency.value = 8000
     high.gain.value = track.eq.high
     const filter = ctx.createBiquadFilter()
-    const spec = filterFromKnob(track.filter)
-    if (spec) {
-      filter.type = spec.type
-      filter.frequency.value = spec.freq
-    } else {
-      filter.type = 'allpass'
-    }
+    filter.type = 'allpass'
     const delay = ctx.createDelay(1)
     delay.delayTime.value = 0.22
     const wet = ctx.createGain()
     wet.gain.value = track.delay * 0.5
     const dry = ctx.createGain()
-    dry.gain.value = 1 - track.delay * 0.25
+    dry.gain.value = 1
     input.connect(vol)
     vol.connect(pan)
     pan.connect(low)
@@ -325,7 +436,7 @@ class StudioEngine {
     delay.connect(wet)
     dry.connect(this.master!)
     wet.connect(this.master!)
-    return input
+    return { input, vol, pan, low, mid, high, filter, wet }
   }
 
   private makeDeckGraph(): DeckGraph {
@@ -574,9 +685,12 @@ class StudioEngine {
     ctx.fillStyle = '#07070c'
     ctx.fillRect(0, 0, w, h)
     const levels = this.getLevels()
+    const picture = this.getPicture()
+    const bass = picture.reactive ? Math.min(1, levels.bass * 1.45) : levels.bass * 0.7
     const assets = this.getAssets()
     if (this.mode === 'dj') {
-      this.drawDj(ctx, w, h, levels)
+      this.drawDj(ctx, w, h, { ...levels, bass })
+      applyLook(ctx, w, h, picture.look, time)
       return
     }
     const clips = [...this.getClips()].sort((a, b) => a.start - b.start)
@@ -588,8 +702,10 @@ class StudioEngine {
       if (!clipAtTime(clip, time)) continue
       const asset = assets.find((a) => a.id === clip.mediaId)
       const loaded = this.media.get(clip.mediaId)
+      const local = time - clip.start
+      const alpha = fadeGain(local, clip.duration, clip.fadeIn, clip.fadeOut, clip.opacity)
       ctx.save()
-      ctx.globalAlpha = clip.opacity
+      ctx.globalAlpha = alpha
       ctx.globalCompositeOperation = clip.blend as GlobalCompositeOperation
       if (asset?.visual) {
         ctx.translate(clip.x, clip.y)
@@ -598,7 +714,7 @@ class StudioEngine {
           time,
           hue: clip.hue,
           text: clip.text,
-          bass: levels.bass,
+          bass,
           mids: levels.mids,
           highs: levels.highs,
           spectrum: levels.spectrum,
@@ -613,7 +729,7 @@ class StudioEngine {
         drew = true
       } else if (loaded?.image) {
         ctx.translate(w / 2 + clip.x, h / 2 + clip.y)
-        ctx.scale(clip.scale, clip.scale)
+        ctx.scale(clip.scale * (1 + bass * 0.04), clip.scale * (1 + bass * 0.04))
         ctx.translate(-w / 2, -h / 2)
         drawMedia(ctx, loaded.image, w, h)
         drew = true
@@ -626,13 +742,15 @@ class StudioEngine {
         time,
         hue: 32,
         text: 'SERIOUS EDITS',
-        bass: levels.bass,
+        bass,
         mids: levels.mids,
         highs: levels.highs,
         spectrum: levels.spectrum,
         opacity: 0.9,
       })
     }
+    drawLowerThird(ctx, w, h, picture.subtitle)
+    applyLook(ctx, w, h, picture.look, time)
     this.drawHud(ctx, w, h, time, levels.peak)
   }
 
@@ -715,6 +833,7 @@ function emptyDeck(): Deck {
     filter: 0,
     cue: 0,
     loop: true,
+    hotCues: [-1, -1, -1, -1],
   }
 }
 
@@ -761,6 +880,17 @@ function makeDriveCurve(amount: number): Float32Array {
     curve[i] = amount === 0 ? x : ((1 + k) * x) / (1 + k * Math.abs(x))
   }
   return curve
+}
+
+function makeClick(ctx: AudioContext): AudioBuffer {
+  const n = Math.floor(ctx.sampleRate * 0.04)
+  const buffer = ctx.createBuffer(1, n, ctx.sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let i = 0; i < n; i++) {
+    const t = i / ctx.sampleRate
+    data[i] = Math.sin(2 * Math.PI * 1200 * t) * Math.exp(-t * 80)
+  }
+  return buffer
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {

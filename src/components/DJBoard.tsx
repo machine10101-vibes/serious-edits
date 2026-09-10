@@ -127,6 +127,15 @@ function DeckPanel({ which, deck, accent }: { which: 'a' | 'b'; deck: Deck; acce
         />
       </div>
       <div className="deck-buttons">
+        <button type="button" className="chip" onClick={() => actions.syncDeck(which)}>
+          Sync
+        </button>
+        <button type="button" className="chip" onClick={() => actions.jumpBeats(which, -1)}>
+          −1
+        </button>
+        <button type="button" className="chip" onClick={() => actions.jumpBeats(which, 1)}>
+          +1
+        </button>
         <button type="button" className="chip" onClick={() => actions.setCue(which)}>
           Set Cue
         </button>
@@ -140,6 +149,22 @@ function DeckPanel({ which, deck, accent }: { which: 'a' | 'b'; deck: Deck; acce
         >
           Loop
         </button>
+      </div>
+      <div className="hotcues">
+        {[0, 1, 2, 3].map((index) => (
+          <button
+            key={index}
+            type="button"
+            className={deck.hotCues[index] != null && deck.hotCues[index]! >= 0 ? 'chip on' : 'chip'}
+            onClick={() => actions.jumpHotCue(which, index)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              actions.setHotCue(which, index)
+            }}
+          >
+            {index + 1}
+          </button>
+        ))}
       </div>
       <input
         className="seek"

@@ -3,13 +3,18 @@ import { engine, isAudioFile, isImageFile, isVideoFile, peaksFromBuffer } from '
 import { uid } from './lib/id'
 import { anySolo, clipEnd, projectLength, splitClip, trimClip } from './lib/clips'
 import { buildDemoStems, samplesToBuffer } from './lib/demoAudio'
+import { autoCrossfadeTrack, scoreVisuals } from './lib/looks'
 import { clamp } from './lib/mix'
-import { clampZoom, snapTime } from './lib/time'
+import { clampZoom, secondsPerBeat, snapTime } from './lib/time'
 import { computePeaks } from './lib/waveform'
 import type {
+  AspectRatio,
   Clip,
   Deck,
+  LookId,
+  Marker,
   MediaAsset,
+  MobilePanel,
   Project,
   StudioMode,
   Toast,
@@ -23,6 +28,7 @@ export interface StudioState {
   tracks: Track[]
   clips: Clip[]
   assets: MediaAsset[]
+  markers: Marker[]
   mode: StudioMode
   tool: Tool
   selectedClipId: string | null
@@ -43,11 +49,16 @@ export interface StudioState {
   xfader: number
   toasts: Toast[]
   busy: string | null
+  panel: MobilePanel | null
+  follow: boolean
+  help: boolean
 }
 
 type Listener = () => void
 
 const listeners = new Set<Listener>()
+let undoStack: string[] = []
+let redoStack: string[] = []
 
 function deck(): Deck {
   return {
@@ -60,6 +71,7 @@ function deck(): Deck {
     filter: 0,
     cue: 0,
     loop: true,
+    hotCues: [-1, -1, -1, -1],
   }
 }
 
@@ -89,8 +101,21 @@ function track(name: string, kind: Track['kind'], color: string): Track {
   }
 }
 
+function blankProject(): Project {
+  return {
+    name: 'Untitled Mix',
+    bpm: 120,
+    duration: 32,
+    aspect: '16:9',
+    look: 'clean',
+    reactive: true,
+    subtitle: '',
+    metronome: false,
+  }
+}
+
 let state: StudioState = {
-  project: { name: 'Untitled Mix', bpm: 120, duration: 32 },
+  project: blankProject(),
   tracks: defaultTracks(),
   clips: [],
   assets: VISUALS.map((visual) => ({
@@ -102,6 +127,7 @@ let state: StudioState = {
     visual: visual.id,
     hasAudio: false,
   })),
+  markers: [],
   mode: 'studio',
   tool: 'pointer',
   selectedClipId: null,
@@ -122,6 +148,9 @@ let state: StudioState = {
   xfader: 0.5,
   toasts: [],
   busy: null,
+  panel: null,
+  follow: true,
+  help: false,
 }
 
 function emit(): void {
@@ -131,6 +160,19 @@ function emit(): void {
 function set(partial: Partial<StudioState> | ((current: StudioState) => StudioState)): void {
   state = typeof partial === 'function' ? partial(state) : { ...state, ...partial }
   emit()
+}
+
+function snapshot(): void {
+  undoStack.push(
+    JSON.stringify({
+      tracks: state.tracks,
+      clips: state.clips,
+      project: state.project,
+      markers: state.markers,
+    }),
+  )
+  if (undoStack.length > 40) undoStack.shift()
+  redoStack = []
 }
 
 export function getState(): StudioState {
@@ -165,6 +207,13 @@ export const actions = {
       getClips: () => state.clips,
       getAssets: () => state.assets,
       getDecks: () => ({ a: state.deckA, b: state.deckB, xf: state.xfader }),
+      getPicture: () => ({
+        look: state.project.look,
+        reactive: state.project.reactive,
+        subtitle: state.project.subtitle,
+        metronome: state.project.metronome,
+        bpm: state.project.bpm,
+      }),
     })
     engine.onTime = (time) => {
       if (Math.abs(time - state.time) > 0.03) {
@@ -183,6 +232,18 @@ export const actions = {
     engine.setMasterFx(state.master.filter, state.master.reverb, state.master.delay, state.master.drive)
   },
 
+  setPanel(panel: MobilePanel | null) {
+    set({ panel: state.panel === panel ? null : panel })
+  },
+
+  toggleHelp() {
+    set({ help: !state.help })
+  },
+
+  toggleFollow() {
+    set({ follow: !state.follow })
+  },
+
   rename(name: string) {
     set({ project: { ...state.project, name } })
   },
@@ -191,9 +252,43 @@ export const actions = {
     set({ project: { ...state.project, bpm: clamp(bpm, 60, 200) } })
   },
 
+  tapTempo() {
+    const now = performance.now()
+    taps.push(now)
+    taps = taps.filter((t) => now - t < 3000).slice(-6)
+    if (taps.length < 2) return
+    const gaps = taps.slice(1).map((t, i) => t - (taps[i] ?? 0))
+    const avg = gaps.reduce((a, b) => a + b, 0) / gaps.length
+    actions.setBpm(clamp(Math.round(60000 / avg), 60, 200))
+  },
+
+  setAspect(aspect: AspectRatio) {
+    set({ project: { ...state.project, aspect } })
+  },
+
+  setLook(look: LookId) {
+    set({ project: { ...state.project, look } })
+  },
+
+  setSubtitle(subtitle: string) {
+    set({ project: { ...state.project, subtitle } })
+  },
+
+  toggleReactive() {
+    set({ project: { ...state.project, reactive: !state.project.reactive } })
+  },
+
+  toggleMetronome() {
+    snapshot()
+    set({ project: { ...state.project, metronome: !state.project.metronome } })
+    if (state.playing && state.mode === 'studio') {
+      engine.play(state.project.duration, state.loop, state.loopStart, state.loopEnd)
+    }
+  },
+
   setMode(mode: StudioMode) {
     engine.setMode(mode)
-    set({ mode })
+    set({ mode, panel: null })
   },
 
   setTool(tool: Tool) {
@@ -210,6 +305,14 @@ export const actions = {
 
   setLoop(loopStart: number, loopEnd: number) {
     set({ loopStart, loopEnd: Math.max(loopStart + 0.25, loopEnd) })
+  },
+
+  loopIn() {
+    set({ loopStart: state.time, loop: true, loopEnd: Math.max(state.time + 1, state.loopEnd) })
+  },
+
+  loopOut() {
+    set({ loopEnd: Math.max(state.loopStart + 0.25, state.time), loop: true })
   },
 
   setZoom(pps: number) {
@@ -261,6 +364,10 @@ export const actions = {
     set({ time: t })
   },
 
+  skip(beats: number) {
+    actions.seek(Math.max(0, state.time + beats * secondsPerBeat(state.project.bpm)))
+  },
+
   updateMaster<K extends keyof StudioState['master']>(key: K, value: number) {
     const master = { ...state.master, [key]: value }
     set({ master })
@@ -272,12 +379,11 @@ export const actions = {
     set({
       tracks: state.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
     })
-    if (state.playing && state.mode === 'studio') {
-      engine.play(state.project.duration, state.loop, state.loopStart, state.loopEnd)
-    }
+    engine.updateLiveTracks()
   },
 
   addTrack(kind: Track['kind']) {
+    snapshot()
     const color = kind === 'audio' ? '#81b29a' : '#6ec3f0'
     const next = track(kind === 'audio' ? 'Audio' : 'Visual', kind, color)
     set({ tracks: [...state.tracks, next], selectedTrackId: next.id })
@@ -285,6 +391,7 @@ export const actions = {
 
   removeTrack(id: string) {
     if (state.tracks.length <= 1) return
+    snapshot()
     set({
       tracks: state.tracks.filter((t) => t.id !== id),
       clips: state.clips.filter((c) => c.trackId !== id),
@@ -307,6 +414,13 @@ export const actions = {
     })
   },
 
+  nudgeSelected(beats: number) {
+    const clip = state.clips.find((c) => c.id === state.selectedClipId)
+    if (!clip) return
+    snapshot()
+    actions.moveClip(clip.id, clip.start + beats * secondsPerBeat(state.project.bpm))
+  },
+
   trim(id: string, edge: 'start' | 'end', time: number) {
     const clip = state.clips.find((c) => c.id === id)
     if (!clip) return
@@ -317,6 +431,7 @@ export const actions = {
   },
 
   splitAtPlayhead() {
+    snapshot()
     const time = state.time
     const next: Clip[] = []
     for (const clip of state.clips) {
@@ -332,11 +447,13 @@ export const actions = {
     if (!clip) return
     const parts = splitClip(clip, time, uid('clip'))
     if (!parts) return
+    snapshot()
     set({ clips: state.clips.flatMap((c) => (c.id === id ? parts : [c])) })
   },
 
   deleteSelected() {
     if (state.selectedClipId) {
+      snapshot()
       set({ clips: state.clips.filter((c) => c.id !== state.selectedClipId), selectedClipId: null })
     }
   },
@@ -344,14 +461,16 @@ export const actions = {
   duplicateSelected() {
     const clip = state.clips.find((c) => c.id === state.selectedClipId)
     if (!clip) return
+    snapshot()
     const copy: Clip = { ...clip, id: uid('clip'), start: clipEnd(clip) }
     set({ clips: [...state.clips, copy], selectedClipId: copy.id })
   },
 
   addClip(mediaId: string, trackId: string, start: number) {
     const media = state.assets.find((a) => a.id === mediaId)
-    const track = state.tracks.find((t) => t.id === trackId)
-    if (!media || !track) return
+    const trackItem = state.tracks.find((t) => t.id === trackId)
+    if (!media || !trackItem) return
+    snapshot()
     const clip: Clip = {
       id: uid('clip'),
       trackId,
@@ -360,8 +479,8 @@ export const actions = {
       duration: media.duration,
       offset: 0,
       gain: 1,
-      fadeIn: 0.01,
-      fadeOut: 0.04,
+      fadeIn: 0.04,
+      fadeOut: 0.08,
       playbackRate: 1,
       opacity: 1,
       blend: 'source-over',
@@ -384,11 +503,20 @@ export const actions = {
     const media = state.assets.find((a) => a.id === mediaId)
     if (!media) return
     const kind: Track['kind'] = media.kind === 'audio' ? 'audio' : 'video'
-    const track =
+    const trackItem =
       state.tracks.find((t) => t.id === trackId && t.kind === kind) ??
       state.tracks.find((t) => t.kind === kind)
-    if (!track) return
-    actions.addClip(mediaId, track.id, start)
+    if (!trackItem) return
+    actions.addClip(mediaId, trackItem.id, start)
+  },
+
+  addAtPlayhead(mediaId?: string) {
+    const id = mediaId ?? state.selectedMediaId
+    if (!id) {
+      toast('Pick a clip first', 'Select something in the library.')
+      return
+    }
+    actions.dropMediaOnTimeline(id, state.selectedTrackId, state.time)
   },
 
   loadToDeck(which: 'a' | 'b', mediaId: string) {
@@ -439,6 +567,135 @@ export const actions = {
     set({ [key]: { ...state[key], cue: state[key].position } } as Partial<StudioState>)
   },
 
+  setHotCue(which: 'a' | 'b', index: number) {
+    const key = which === 'a' ? 'deckA' : 'deckB'
+    const hotCues = [...state[key].hotCues]
+    hotCues[index] = state[key].position
+    set({ [key]: { ...state[key], hotCues } } as Partial<StudioState>)
+  },
+
+  jumpHotCue(which: 'a' | 'b', index: number) {
+    const key = which === 'a' ? 'deckA' : 'deckB'
+    const cue = state[key].hotCues[index]
+    if (cue == null || cue < 0) {
+      actions.setHotCue(which, index)
+      return
+    }
+    const next = { ...state[key], position: cue }
+    set({ [key]: next } as Partial<StudioState>)
+    if (next.playing) void engine.playDeck(which, next)
+  },
+
+  jumpBeats(which: 'a' | 'b', beats: number) {
+    const key = which === 'a' ? 'deckA' : 'deckB'
+    const asset = state.assets.find((a) => a.id === state[key].mediaId)
+    const duration = asset?.duration ?? 0
+    const position = clamp(state[key].position + beats * secondsPerBeat(state.project.bpm), 0, Math.max(0.01, duration))
+    const next = { ...state[key], position }
+    set({ [key]: next } as Partial<StudioState>)
+    if (next.playing) void engine.playDeck(which, next)
+  },
+
+  syncDeck(which: 'a' | 'b') {
+    const key = which === 'a' ? 'deckA' : 'deckB'
+    const asset = state.assets.find((a) => a.id === state[key].mediaId)
+    const assumed = asset?.bpm ?? state.project.bpm
+    const rate = clamp(state.project.bpm / assumed, 0.92, 1.08)
+    actions.updateDeck(which, { rate })
+    toast('Deck synced', `${which.toUpperCase()} locked to ${state.project.bpm} BPM`)
+  },
+
+  dropMarker() {
+    snapshot()
+    const marker: Marker = {
+      id: uid('mk'),
+      time: snapTime(state.time, state.project.bpm, 4, state.snap),
+      label: `Cue ${state.markers.length + 1}`,
+    }
+    set({ markers: [...state.markers, marker] })
+  },
+
+  seekMarker(id: string) {
+    const marker = state.markers.find((m) => m.id === id)
+    if (marker) actions.seek(marker.time)
+  },
+
+  removeMarker(id: string) {
+    snapshot()
+    set({ markers: state.markers.filter((m) => m.id !== id) })
+  },
+
+  scorePicture() {
+    const video = state.tracks.find((t) => t.kind === 'video')
+    if (!video) return
+    snapshot()
+    const scored = scoreVisuals(
+      state.assets,
+      state.project.duration,
+      state.project.bpm,
+    )
+    const kept = state.clips.filter((c) => c.trackId !== video.id)
+    const added = scored.map((item) => ({
+      ...makeClip(video.id, item.mediaId, item.start, item.duration),
+      fadeIn: 0.2,
+      fadeOut: 0.25,
+    }))
+    const clips = [...kept, ...added]
+    set({
+      clips,
+      project: { ...state.project, duration: projectLength(clips) },
+      selectedClipId: added[0]?.id ?? state.selectedClipId,
+    })
+    toast('Picture scored', 'Visuals now follow the beat grid.')
+  },
+
+  autoFade() {
+    snapshot()
+    const groups = new Map<string, Clip[]>()
+    for (const clip of state.clips) {
+      const list = groups.get(clip.trackId) ?? []
+      list.push(clip)
+      groups.set(clip.trackId, list)
+    }
+    const next: Clip[] = []
+    for (const [trackId, group] of groups) {
+      const trackItem = state.tracks.find((t) => t.id === trackId)
+      next.push(...(trackItem?.kind === 'audio' ? autoCrossfadeTrack(group, 0.35) : group))
+    }
+    set({ clips: next })
+    toast('Auto-fade', 'Audio clips now overlap with fades.')
+  },
+
+  undo() {
+    const prev = undoStack.pop()
+    if (!prev) return
+    redoStack.push(
+      JSON.stringify({
+        tracks: state.tracks,
+        clips: state.clips,
+        project: state.project,
+        markers: state.markers,
+      }),
+    )
+    const parsed = JSON.parse(prev) as Pick<StudioState, 'tracks' | 'clips' | 'project' | 'markers'>
+    set(parsed)
+  },
+
+  redo() {
+    const next = redoStack.pop()
+    if (!next) return
+    undoStack.push(
+      JSON.stringify({
+        tracks: state.tracks,
+        clips: state.clips,
+        project: state.project,
+        markers: state.markers,
+      }),
+    )
+    const parsed = JSON.parse(next) as Pick<StudioState, 'tracks' | 'clips' | 'project' | 'markers'>
+    set(parsed)
+  },
+
   async importFiles(files: FileList | File[]) {
     await engine.ensure()
     const list = [...files]
@@ -463,8 +720,8 @@ export const actions = {
           hasAudio: Boolean(loaded?.buffer),
         }
         set({ assets: [...state.assets, asset], selectedMediaId: id, busy: null })
-        const track = state.tracks.find((t) => t.kind === (kind === 'audio' ? 'audio' : 'video'))
-        if (track) actions.addClip(id, track.id, lastEnd(track.id))
+        const trackItem = state.tracks.find((t) => t.kind === (kind === 'audio' ? 'audio' : 'video'))
+        if (trackItem) actions.addClip(id, trackItem.id, lastEnd(trackItem.id))
         toast('Imported', file.name)
       } catch {
         set({ busy: null })
@@ -476,6 +733,7 @@ export const actions = {
   async loadDemo() {
     set({ busy: 'Composing demo session' })
     await engine.ensure()
+    snapshot()
     const sr = engine.ctx?.sampleRate ?? 44100
     const stems = buildDemoStems(sr)
     const tracks = defaultTracks()
@@ -499,7 +757,7 @@ export const actions = {
       assets.push(asset)
       const tr = tracks[index]
       if (!tr) continue
-      clips.push(makeClip(tr.id, id, 0, stem.duration, stem.color))
+      clips.push(makeClip(tr.id, id, 0, stem.duration))
     }
     const deckStem = stems[3]
     if (deckStem) {
@@ -526,11 +784,11 @@ export const actions = {
     const title = assets.find((a) => a.visual === 'title')
     const videoA = tracks[3]
     const overlay = tracks[4]
-    if (aurora && videoA) clips.push({ ...makeClip(videoA.id, aurora.id, 0, 16, aurora.color), hue: 168 })
-    if (pulse && videoA) clips.push({ ...makeClip(videoA.id, pulse.id, 16, 16, pulse.color), hue: 32 })
+    if (aurora && videoA) clips.push({ ...makeClip(videoA.id, aurora.id, 0, 16), hue: 168, fadeIn: 0.2, fadeOut: 0.3 })
+    if (pulse && videoA) clips.push({ ...makeClip(videoA.id, pulse.id, 16, 16), hue: 32, fadeIn: 0.2, fadeOut: 0.3 })
     if (title && overlay) {
       clips.push({
-        ...makeClip(overlay.id, title.id, 0, 8, title.color),
+        ...makeClip(overlay.id, title.id, 0, 8),
         blend: 'screen',
         opacity: 0.92,
         text: 'SERIOUS EDITS',
@@ -540,7 +798,17 @@ export const actions = {
       tracks,
       assets,
       clips,
-      project: { name: 'Night Shift', bpm: 120, duration: 32 },
+      markers: [{ id: uid('mk'), time: 0, label: 'Intro' }, { id: uid('mk'), time: 8, label: 'Drop' }],
+      project: {
+        name: 'Night Shift',
+        bpm: 120,
+        duration: 32,
+        aspect: '16:9',
+        look: 'clean',
+        reactive: true,
+        subtitle: 'Night Shift — Serious Edits',
+        metronome: false,
+      },
       busy: null,
       selectedClipId: clips[0]?.id ?? null,
     })
@@ -552,10 +820,12 @@ export const actions = {
     engine.stop()
     engine.stopDeck('a')
     engine.stopDeck('b')
+    snapshot()
     set({
-      project: { name: 'Untitled Mix', bpm: 120, duration: 32 },
+      project: blankProject(),
       tracks: defaultTracks(),
       clips: [],
+      markers: [],
       selectedClipId: null,
       playing: false,
       time: 0,
@@ -574,7 +844,7 @@ export const actions = {
     if (!state.playing) await actions.play()
     await engine.startRecording()
     set({ recording: true })
-    toast('Recording', 'Video + audio capture is live.')
+    toast('Recording', `Capturing ${state.project.aspect} program output.`)
   },
 
   async exportWav() {
@@ -594,6 +864,7 @@ export const actions = {
       project: state.project,
       tracks: state.tracks,
       clips: state.clips,
+      markers: state.markers,
       assets: state.assets.map(({ peaks: _peaks, url: _url, ...rest }) => rest),
     }
     download(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `${slug(state.project.name)}.json`)
@@ -601,7 +872,9 @@ export const actions = {
   },
 }
 
-function makeClip(trackId: string, mediaId: string, start: number, duration: number, _color: string): Clip {
+let taps: number[] = []
+
+function makeClip(trackId: string, mediaId: string, start: number, duration: number): Clip {
   return {
     id: uid('clip'),
     trackId,

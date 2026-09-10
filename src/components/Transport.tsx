@@ -34,6 +34,21 @@ export function Transport() {
         >
           <RazorIcon /> Cut
         </button>
+        <button type="button" className="chip" onClick={() => actions.skip(-4)}>
+          −Bar
+        </button>
+        <button type="button" className="chip" onClick={() => actions.skip(4)}>
+          +Bar
+        </button>
+        <button type="button" className="chip" onClick={actions.loopIn}>
+          In
+        </button>
+        <button type="button" className="chip" onClick={actions.loopOut}>
+          Out
+        </button>
+        <button type="button" className="chip" onClick={actions.dropMarker}>
+          Mark
+        </button>
         <button type="button" className="chip" onClick={actions.splitAtPlayhead}>
           Split
         </button>

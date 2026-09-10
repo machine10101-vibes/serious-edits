@@ -1,3 +1,6 @@
+export type AspectRatio = '16:9' | '9:16' | '1:1'
+export type LookId = 'clean' | 'cinematic' | 'neon' | 'noir' | 'sunset' | 'vhs'
+export type MobilePanel = 'library' | 'mixer' | 'clip' | 'timeline'
 export type StudioMode = 'studio' | 'dj'
 export type TrackKind = 'audio' | 'video'
 export type MediaKind = 'audio' | 'video' | 'image' | 'visual'
@@ -24,6 +27,12 @@ export interface EqState {
   low: number
   mid: number
   high: number
+}
+
+export interface Marker {
+  id: string
+  time: number
+  label: string
 }
 
 export interface MediaAsset {
@@ -84,12 +93,18 @@ export interface Deck {
   filter: number
   cue: number
   loop: boolean
+  hotCues: number[]
 }
 
 export interface Project {
   name: string
   bpm: number
   duration: number
+  aspect: AspectRatio
+  look: LookId
+  reactive: boolean
+  subtitle: string
+  metronome: boolean
 }
 
 export interface Toast {
@@ -116,4 +131,19 @@ export const VISUALS: { id: VisualKind; name: string; color: string }[] = [
   { id: 'strobe', name: 'Strobe', color: '#ff5a7a' },
   { id: 'tunnel', name: 'Tunnel', color: '#81b29a' },
   { id: 'horizon', name: 'Horizon', color: '#6ec3f0' },
+]
+
+export const ASPECTS: { id: AspectRatio; label: string }[] = [
+  { id: '16:9', label: 'YouTube' },
+  { id: '9:16', label: 'Reels' },
+  { id: '1:1', label: 'Square' },
+]
+
+export const LOOKS: { id: LookId; label: string }[] = [
+  { id: 'clean', label: 'Clean' },
+  { id: 'cinematic', label: 'Film' },
+  { id: 'neon', label: 'Neon' },
+  { id: 'noir', label: 'Noir' },
+  { id: 'sunset', label: 'Sunset' },
+  { id: 'vhs', label: 'VHS' },
 ]
