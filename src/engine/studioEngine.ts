@@ -693,10 +693,12 @@ class StudioEngine {
     const ss = String(Math.floor(time % 60)).padStart(2, '0')
     const ms = String(Math.floor((time % 1) * 1000)).padStart(3, '0')
     ctx.fillText(`${mm}:${ss}.${ms}`, 28, h - 30)
-    ctx.fillStyle = `rgba(255,90,122,${this.recording ? 0.9 : 0.15})`
-    ctx.beginPath()
-    ctx.arc(w - 28, 28, 7, 0, Math.PI * 2)
-    ctx.fill()
+    if (this.recording) {
+      ctx.fillStyle = 'rgba(255,90,122,0.9)'
+      ctx.beginPath()
+      ctx.arc(w - 28, 28, 7, 0, Math.PI * 2)
+      ctx.fill()
+    }
     ctx.fillStyle = `rgba(62,224,197,${0.2 + peak * 0.7})`
     ctx.fillRect(w - 18, h - 24 - peak * (h * 0.4), 6, peak * (h * 0.4))
   }
