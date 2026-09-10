@@ -928,7 +928,7 @@ export const actions = {
   async exportWav() {
     set({ busy: 'Bouncing audio mix', exporting: 'audio', exportOpen: false })
     try {
-      const blob = await engine.bounceWav(state.project.duration)
+      const blob = await engine.bounceWav(mixDuration())
       download(blob, `${slug(state.project.name)}.wav`)
       toast('Audio exported', 'WAV mixdown is downloading.')
     } catch {
@@ -940,7 +940,7 @@ export const actions = {
   async exportMp3() {
     set({ busy: 'Encoding MP3 mix', exporting: 'audio', exportOpen: false })
     try {
-      const buffer = await engine.bounceMix(state.project.duration)
+      const buffer = await engine.bounceMix(mixDuration())
       const blob = encodeMp3(buffer, 192)
       download(blob, `${slug(state.project.name)}.mp3`)
       toast('Audio exported', 'MP3 mixdown is downloading.')
@@ -959,7 +959,7 @@ export const actions = {
     }
     await engine.ensure()
     const from = state.loop ? state.loopStart : 0
-    const end = state.loop ? state.loopEnd : state.project.duration
+    const end = state.loop ? state.loopEnd : mixDuration()
     const duration = Math.max(0.5, end - from)
     const size = aspectExportSize(state.project.aspect)
     const metronome = state.project.metronome
@@ -1030,6 +1030,11 @@ function makeClip(trackId: string, mediaId: string, start: number, duration: num
 
 function lastEnd(trackId: string): number {
   return state.clips.filter((c) => c.trackId === trackId).reduce((m, c) => Math.max(m, clipEnd(c)), 0)
+}
+
+function mixDuration(): number {
+  const end = state.clips.reduce((max, clip) => Math.max(max, clipEnd(clip)), 0)
+  return Math.max(0.5, end + 0.05)
 }
 
 function download(blob: Blob, name: string): void {
