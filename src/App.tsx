@@ -102,6 +102,9 @@ export function App() {
       <Transport />
       <Dock />
       <Shortcuts />
+      {panel && (
+        <button type="button" className="sheet-scrim" aria-label="Close panel" onClick={() => actions.setPanel(null)} />
+      )}
       <div className="toasts">
         {toasts.map((toast) => (
           <div key={toast.id} className="toast">

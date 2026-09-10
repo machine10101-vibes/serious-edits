@@ -233,6 +233,10 @@ export const actions = {
   },
 
   setPanel(panel: MobilePanel | null) {
+    set({ panel })
+  },
+
+  togglePanel(panel: MobilePanel) {
     set({ panel: state.panel === panel ? null : panel })
   },
 

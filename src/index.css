@@ -1126,10 +1126,15 @@ button {
   touch-action: none;
 }
 
+.sheet-close,
+.sheet-scrim {
+  display: none;
+}
+
 @media (max-width: 1100px) {
   .app {
-    grid-template-rows: 52px minmax(0, 1fr) auto auto 52px 56px;
-    padding-bottom: env(safe-area-inset-bottom);
+    grid-template-rows: 52px minmax(0, 1fr) auto;
+    padding-bottom: calc(112px + env(safe-area-inset-bottom));
   }
 
   .workspace {
@@ -1137,37 +1142,22 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .inspector,
-  .library,
-  .mixer {
-    display: none;
+  .transport {
     position: fixed;
-    left: 8px;
-    right: 8px;
-    bottom: calc(118px + env(safe-area-inset-bottom));
-    height: min(50vh, 440px);
-    max-height: none;
-    z-index: 15;
-    box-shadow: var(--shadow);
-  }
-
-  .app.panel-library .library,
-  .app.panel-mixer .mixer,
-  .app.panel-clip .inspector {
-    display: flex;
-  }
-
-  .timeline {
-    height: 168px;
-    margin: 0 8px;
-  }
-
-  .app.panel-timeline .timeline {
-    height: 42vh;
+    left: 0;
+    right: 0;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    z-index: 28;
+    height: 52px;
   }
 
   .dock {
     display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
     gap: 6px;
     padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
@@ -1191,6 +1181,48 @@ button {
     color: var(--gold-2);
     border-color: rgba(212, 166, 87, 0.35);
     background: rgba(212, 166, 87, 0.12);
+  }
+
+  .sheet-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 4, 8, 0.45);
+    border: 0;
+    z-index: 18;
+  }
+
+  .sheet-close {
+    display: inline-flex;
+  }
+
+  .inspector,
+  .library,
+  .mixer {
+    display: none;
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: calc(120px + env(safe-area-inset-bottom));
+    height: min(38vh, 360px);
+    max-height: none;
+    z-index: 22;
+    box-shadow: var(--shadow);
+  }
+
+  .app.panel-library .library,
+  .app.panel-mixer .mixer,
+  .app.panel-clip .inspector {
+    display: flex;
+  }
+
+  .timeline {
+    height: 148px;
+    margin: 0 8px;
+  }
+
+  .app.panel-timeline .timeline {
+    height: 36vh;
   }
 
   .dj {

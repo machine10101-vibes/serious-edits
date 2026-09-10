@@ -11,6 +11,9 @@ export function Mixer() {
     <aside className="mixer">
       <div className="panel-head">
         <h2>Mixer</h2>
+        <button type="button" className="sheet-close" onClick={() => actions.setPanel(null)}>
+          Done
+        </button>
         <div className="add-row">
           <button type="button" className="chip" onClick={() => actions.addTrack('audio')}>
             + Audio

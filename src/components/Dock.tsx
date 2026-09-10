@@ -17,7 +17,7 @@ export function Dock() {
           key={item.id}
           type="button"
           className={panel === item.id ? 'on' : ''}
-          onClick={() => actions.setPanel(item.id)}
+          onClick={() => actions.togglePanel(item.id)}
         >
           {item.label}
         </button>

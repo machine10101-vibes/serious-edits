@@ -13,6 +13,9 @@ export function Inspector() {
       <aside className="inspector">
         <div className="panel-head">
           <h2>Inspector</h2>
+          <button type="button" className="sheet-close" onClick={() => actions.setPanel(null)}>
+            Done
+          </button>
         </div>
         <p className="hint">Select a clip, or drop a marker and score the picture to the beat.</p>
         <div className="inspect-actions">
@@ -32,6 +35,9 @@ export function Inspector() {
       <div className="panel-head">
         <h2>Inspector</h2>
         <span className="chip on">{asset?.name ?? 'Clip'}</span>
+        <button type="button" className="sheet-close" onClick={() => actions.setPanel(null)}>
+          Done
+        </button>
       </div>
       <div className="inspect-grid">
         <Knob

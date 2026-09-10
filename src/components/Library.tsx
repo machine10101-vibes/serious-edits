@@ -21,6 +21,9 @@ export function Library() {
     <aside className="library">
       <div className="panel-head">
         <h2>Library</h2>
+        <button type="button" className="sheet-close" onClick={() => actions.setPanel(null)}>
+          Done
+        </button>
         <button type="button" className="icon-btn" onClick={() => input.current?.click()} title="Import media">
           <ImportIcon />
         </button>
