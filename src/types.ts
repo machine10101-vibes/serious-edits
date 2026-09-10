@@ -13,6 +13,8 @@ export type BlendMode =
   | 'lighten'
   | 'plus-lighter'
 
+export type FitMode = 'cover' | 'contain'
+
 export type VisualKind =
   | 'aurora'
   | 'pulse'
@@ -22,6 +24,7 @@ export type VisualKind =
   | 'strobe'
   | 'tunnel'
   | 'horizon'
+  | 'waveform'
 
 export interface EqState {
   low: number
@@ -67,6 +70,9 @@ export interface Clip {
   y: number
   hue: number
   text: string
+  audioEnabled: boolean
+  fit: FitMode
+  loop: boolean
 }
 
 export interface Track {
@@ -131,6 +137,7 @@ export const VISUALS: { id: VisualKind; name: string; color: string }[] = [
   { id: 'strobe', name: 'Strobe', color: '#ff5a7a' },
   { id: 'tunnel', name: 'Tunnel', color: '#81b29a' },
   { id: 'horizon', name: 'Horizon', color: '#6ec3f0' },
+  { id: 'waveform', name: 'Waveform', color: '#f0d29a' },
 ]
 
 export const ASPECTS: { id: AspectRatio; label: string }[] = [

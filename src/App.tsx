@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { DJBoard } from './components/DJBoard'
 import { Dock } from './components/Dock'
+import { ExportMenu } from './components/ExportMenu'
 import { Inspector } from './components/Inspector'
 import { Library } from './components/Library'
 import { Mixer } from './components/Mixer'
@@ -27,6 +28,14 @@ export function App() {
         void actions.togglePlay()
       }
       if (event.key === '?' ) actions.toggleHelp()
+      if (event.key === 'e' || event.key === 'E') {
+        if (!event.metaKey && !event.ctrlKey) actions.toggleExport()
+      }
+      if (event.key === 'Escape') {
+        if (getState().exportOpen) actions.toggleExport()
+        else if (getState().help) actions.toggleHelp()
+        else if (getState().panel) actions.setPanel(null)
+      }
       if (event.key === 's' || event.key === 'S') actions.stop()
       if (event.key === 'r' || event.key === 'R') void actions.toggleRecord()
       if (event.key === 'l' || event.key === 'L') actions.toggleLoop()
@@ -102,6 +111,40 @@ export function App() {
       <Transport />
       <Dock />
       <Shortcuts />
+      <ExportMenu />
+      <input
+        id="se-import-audio"
+        type="file"
+        hidden
+        multiple
+        accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.aiff"
+        onChange={(e) => {
+          if (e.target.files) void actions.importFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
+      <input
+        id="se-import-video"
+        type="file"
+        hidden
+        multiple
+        accept="video/*,image/*,.mp4,.mov,.webm,.m4v,.png,.jpg,.jpeg,.webp"
+        onChange={(e) => {
+          if (e.target.files) void actions.importFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
+      <input
+        id="se-import-any"
+        type="file"
+        hidden
+        multiple
+        accept="audio/*,video/*,image/*"
+        onChange={(e) => {
+          if (e.target.files) void actions.importFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
       {panel && (
         <button type="button" className="sheet-scrim" aria-label="Close panel" onClick={() => actions.setPanel(null)} />
       )}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Clip, MediaAsset } from '../types'
+import { createClip } from './clips'
 import { aspectPair, autoCrossfadeTrack, scoreVisuals } from './looks'
 
 function visual(id: string): MediaAsset {
@@ -15,25 +16,17 @@ function visual(id: string): MediaAsset {
 }
 
 function clip(id: string, start: number, duration: number): Clip {
-  return {
+  return createClip({
     id,
     trackId: 't',
     mediaId: 'm',
     start,
     duration,
-    offset: 0,
-    gain: 1,
     fadeIn: 0,
     fadeOut: 0,
-    playbackRate: 1,
-    opacity: 1,
-    blend: 'source-over',
-    scale: 1,
-    x: 0,
-    y: 0,
     hue: 0,
     text: '',
-  }
+  })
 }
 
 describe('looks helpers', () => {

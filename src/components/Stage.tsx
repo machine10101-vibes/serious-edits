@@ -22,10 +22,16 @@ export function Stage() {
           {clips.length === 0 && (
             <div className="stage-empty">
               <p className="serif">The booth is yours.</p>
-              <p>Import audio and video, or load the demo session to mix a full night in seconds.</p>
+              <p>Import a video and a song, or load the demo session to mix a full night in seconds.</p>
               <div className="empty-actions">
                 <button type="button" className="play" onClick={() => void actions.loadDemo()}>
                   Load demo session
+                </button>
+                <button type="button" className="chip" onClick={() => actions.openImporter('video')}>
+                  Import video
+                </button>
+                <button type="button" className="chip" onClick={() => actions.openImporter('audio')}>
+                  Import music
                 </button>
               </div>
             </div>

@@ -3,6 +3,7 @@ import { actions, useStudio } from '../store'
 export function Dock() {
   const panel = useStudio((s) => s.panel)
   const mode = useStudio((s) => s.mode)
+  const exportOpen = useStudio((s) => s.exportOpen)
   const items = [
     { id: 'library' as const, label: 'Library' },
     { id: 'mixer' as const, label: 'Mixer' },
@@ -22,6 +23,9 @@ export function Dock() {
           {item.label}
         </button>
       ))}
+      <button type="button" className={exportOpen ? 'on' : ''} onClick={actions.toggleExport}>
+        Export
+      </button>
     </nav>
   )
 }

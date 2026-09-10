@@ -67,11 +67,11 @@ export function TopBar() {
         <button type="button" className="ghost" onClick={actions.newProject}>
           New
         </button>
-        <button type="button" className="ghost" onClick={() => void actions.exportWav()}>
-          WAV
+        <button type="button" className="ghost" onClick={() => actions.openImporter('any')}>
+          Import
         </button>
-        <button type="button" className="ghost" onClick={actions.exportProject}>
-          JSON
+        <button type="button" className="export-btn" onClick={actions.toggleExport}>
+          Export
         </button>
         <button
           type="button"

@@ -61,6 +61,9 @@ export function drawVisual(
     case 'horizon':
       drawHorizon(ctx, w, h, frame)
       break
+    case 'waveform':
+      drawWaveformVisual(ctx, w, h, frame)
+      break
   }
   ctx.restore()
 }
@@ -197,4 +200,28 @@ function drawHorizon(ctx: CanvasRenderingContext2D, w: number, h: number, f: Vis
     ctx.lineTo(w, y)
     ctx.stroke()
   }
+}
+
+function drawWaveformVisual(ctx: CanvasRenderingContext2D, w: number, h: number, f: VisualFrame): void {
+  fillBg(ctx, w, h, f.hue + 28, f.time)
+  const mid = h * 0.52
+  const bars = Math.min(128, f.spectrum.length)
+  const bw = w / bars
+  ctx.fillStyle = hsl(f.hue, 20, 8, 0.35)
+  ctx.fillRect(0, mid - 2, w, 4)
+  for (let i = 0; i < bars; i++) {
+    const v = (f.spectrum[i] ?? 0) / 255
+    const amp = Math.max(6, (v * 0.72 + f.bass * 0.28) * h * 0.42)
+    const x = i * bw
+    const g = ctx.createLinearGradient(0, mid - amp, 0, mid + amp)
+    g.addColorStop(0, hsl(f.hue + i * 0.4, 85, 68, 0.15))
+    g.addColorStop(0.5, hsl(f.hue + 18, 90, 78, 0.95))
+    g.addColorStop(1, hsl(f.hue + 40, 80, 50, 0.2))
+    ctx.fillStyle = g
+    ctx.fillRect(x + 1, mid - amp, Math.max(1, bw - 2), amp * 2)
+  }
+  ctx.textAlign = 'center'
+  ctx.fillStyle = hsl(f.hue + 20, 40, 86, 0.7)
+  ctx.font = `600 ${Math.max(14, w * 0.022)}px Manrope, sans-serif`
+  if (f.text) ctx.fillText(f.text, w / 2, h * 0.14)
 }

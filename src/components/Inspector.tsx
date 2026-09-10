@@ -1,4 +1,5 @@
 import { BLEND_MODES } from '../types'
+import type { FitMode } from '../types'
 import { actions, useStudio } from '../store'
 import { Knob } from './Knob'
 
@@ -111,6 +112,50 @@ export function Inspector() {
           ))}
         </select>
       </label>
+      {asset && asset.kind !== 'audio' && (
+        <>
+          <label className="field">
+            Fit
+            <select
+              value={clip.fit}
+              onChange={(e) => actions.updateClip(clipId, { fit: e.target.value as FitMode })}
+            >
+              <option value="cover">Cover</option>
+              <option value="contain">Contain</option>
+            </select>
+          </label>
+          <div className="inspect-actions">
+            <button
+              type="button"
+              className={clip.audioEnabled ? 'chip on' : 'chip'}
+              onClick={() => actions.updateClip(clipId, { audioEnabled: !clip.audioEnabled })}
+            >
+              Picture audio
+            </button>
+            <button
+              type="button"
+              className={clip.loop ? 'chip on' : 'chip'}
+              onClick={() => actions.updateClip(clipId, { loop: !clip.loop })}
+            >
+              Loop
+            </button>
+            <button type="button" className="chip" onClick={actions.fitPictureToMix}>
+              Fill mix
+            </button>
+          </div>
+        </>
+      )}
+      {asset?.kind === 'audio' && (
+        <div className="inspect-actions">
+          <button
+            type="button"
+            className={clip.loop ? 'chip on' : 'chip'}
+            onClick={() => actions.updateClip(clipId, { loop: !clip.loop })}
+          >
+            Loop clip
+          </button>
+        </div>
+      )}
       {track && (
         <label className="field">
           Track filter

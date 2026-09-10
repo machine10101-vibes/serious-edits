@@ -217,7 +217,7 @@ function ClipView({
     >
       <span className="edge" data-edge="start" />
       <div className="clip-body">
-        <span className="clip-name">{name}</span>
+        <span className="clip-name">{name}{clip.loop ? ' · loop' : ''}</span>
         {peaks && <MiniWave peaks={peaks} color={color} />}
         <span className="clip-time">{formatTimecode(clip.duration)}</span>
       </div>

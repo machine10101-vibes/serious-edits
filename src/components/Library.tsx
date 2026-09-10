@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { actions, useStudio } from '../store'
 import { ImportIcon } from './Icons'
 
@@ -6,7 +6,6 @@ export function Library() {
   const assets = useStudio((s) => s.assets)
   const selected = useStudio((s) => s.selectedMediaId)
   const [filter, setFilter] = useState<'all' | 'audio' | 'video' | 'visual'>('all')
-  const input = useRef<HTMLInputElement>(null)
   const shown = useMemo(
     () =>
       assets.filter((asset) => {
@@ -24,20 +23,17 @@ export function Library() {
         <button type="button" className="sheet-close" onClick={() => actions.setPanel(null)}>
           Done
         </button>
-        <button type="button" className="icon-btn" onClick={() => input.current?.click()} title="Import media">
+        <button type="button" className="icon-btn" onClick={() => actions.openImporter('any')} title="Import media">
           <ImportIcon />
         </button>
-        <input
-          ref={input}
-          type="file"
-          hidden
-          multiple
-          accept="audio/*,video/*,image/*"
-          onChange={(e) => {
-            if (e.target.files) void actions.importFiles(e.target.files)
-            e.target.value = ''
-          }}
-        />
+      </div>
+      <div className="import-row">
+        <button type="button" className="chip" onClick={() => actions.openImporter('video')}>
+          Video
+        </button>
+        <button type="button" className="chip" onClick={() => actions.openImporter('audio')}>
+          Music
+        </button>
       </div>
       <div className="filters">
         {(['all', 'audio', 'video', 'visual'] as const).map((id) => (
@@ -77,7 +73,7 @@ export function Library() {
           </div>
         ))}
       </div>
-      <p className="hint">Tap + to drop at the playhead. Drag on desktop. Drop files anywhere to import.</p>
+      <p className="hint">Import a video, then a song. Tap + to drop at the playhead. Drag on desktop.</p>
     </aside>
   )
 }

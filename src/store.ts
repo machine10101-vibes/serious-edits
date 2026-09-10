@@ -1,10 +1,12 @@
 import { useSyncExternalStore } from 'react'
 import { engine, isAudioFile, isImageFile, isVideoFile, peaksFromBuffer } from './engine/studioEngine'
 import { uid } from './lib/id'
-import { anySolo, clipEnd, projectLength, splitClip, trimClip } from './lib/clips'
+import { anySolo, clipEnd, createClip, projectLength, splitClip, trimClip } from './lib/clips'
 import { buildDemoStems, samplesToBuffer } from './lib/demoAudio'
+import { encodeMp3 } from './lib/encodeMp3'
 import { autoCrossfadeTrack, scoreVisuals } from './lib/looks'
 import { clamp } from './lib/mix'
+import { aspectExportSize, audioMixLength, extensionForMime, fitPictureClips } from './lib/picture'
 import { clampZoom, secondsPerBeat, snapTime } from './lib/time'
 import { computePeaks } from './lib/waveform'
 import type {
@@ -52,6 +54,8 @@ export interface StudioState {
   panel: MobilePanel | null
   follow: boolean
   help: boolean
+  exportOpen: boolean
+  exporting: 'video' | 'audio' | null
 }
 
 type Listener = () => void
@@ -151,6 +155,8 @@ let state: StudioState = {
   panel: null,
   follow: true,
   help: false,
+  exportOpen: false,
+  exporting: null,
 }
 
 function emit(): void {
@@ -216,16 +222,20 @@ export const actions = {
       }),
     })
     engine.onTime = (time) => {
-      if (Math.abs(time - state.time) > 0.03) {
+      if (Math.abs(time - state.time) > 0.03 || state.exporting) {
         const deckA = { ...state.deckA, position: engine.deckPosition('a', state.deckA) }
         const deckB = { ...state.deckB, position: engine.deckPosition('b', state.deckB) }
-        set({ time, deckA, deckB, playing: engine.isPlaying(), recording: engine.recording })
+        const busy =
+          state.exporting === 'video'
+            ? `Exporting video · ${Math.min(state.project.duration, time).toFixed(0)}s / ${state.project.duration.toFixed(0)}s`
+            : state.busy
+        set({ time, deckA, deckB, playing: engine.isPlaying(), recording: engine.recording, busy })
       }
     }
     engine.onRecorded = (blob, mime) => {
-      const ext = mime.includes('webm') ? 'webm' : 'mp4'
-      download(blob, `${state.project.name.replace(/\s+/g, '-').toLowerCase()}.${ext}`)
-      toast('Mix exported', 'Your recording is downloading.')
+      const ext = extensionForMime(mime)
+      download(blob, `${slug(state.project.name)}.${ext}`)
+      toast('Mix exported', ext === 'mp4' ? 'MP4 is downloading.' : 'Video file is downloading.')
       set({ recording: false })
     }
     engine.setMasterVolume(state.master.volume)
@@ -242,6 +252,10 @@ export const actions = {
 
   toggleHelp() {
     set({ help: !state.help })
+  },
+
+  toggleExport() {
+    set({ exportOpen: !state.exportOpen, panel: null })
   },
 
   toggleFollow() {
@@ -407,6 +421,13 @@ export const actions = {
       clips: state.clips.map((c) => (c.id === id ? { ...c, ...patch } : c)),
     })
     set({ project: { ...state.project, duration: projectLength(state.clips, state.project.duration) } })
+    if (
+      state.playing &&
+      state.mode === 'studio' &&
+      ('audioEnabled' in patch || 'loop' in patch || 'playbackRate' in patch || 'gain' in patch)
+    ) {
+      engine.play(state.project.duration, state.loop, state.loopStart, state.loopEnd)
+    }
   },
 
   moveClip(id: string, start: number, trackId?: string) {
@@ -483,8 +504,8 @@ export const actions = {
       duration: media.duration,
       offset: 0,
       gain: 1,
-      fadeIn: 0.04,
-      fadeOut: 0.08,
+      fadeIn: media.kind === 'audio' ? 0.04 : 0.12,
+      fadeOut: media.kind === 'audio' ? 0.08 : 0.18,
       playbackRate: 1,
       opacity: 1,
       blend: 'source-over',
@@ -493,6 +514,9 @@ export const actions = {
       y: 0,
       hue: 32,
       text: state.project.name,
+      audioEnabled: media.kind === 'audio',
+      fit: 'cover',
+      loop: false,
     }
     const clips = [...state.clips, clip]
     set({
@@ -653,6 +677,38 @@ export const actions = {
     toast('Picture scored', 'Visuals now follow the beat grid.')
   },
 
+  fitPictureToMix() {
+    const videoIds = state.tracks.filter((track) => track.kind === 'video').map((track) => track.id)
+    if (!videoIds.length || !state.clips.some((clip) => videoIds.includes(clip.trackId))) {
+      toast('Add a video first', 'Import a clip, then Fit picture to cover the song.')
+      return
+    }
+    snapshot()
+    const mix = audioMixLength(
+      state.clips,
+      state.tracks.filter((track) => track.kind === 'audio').map((track) => track.id),
+      state.project.duration,
+    )
+    const clips = fitPictureClips(state.clips, videoIds, mix)
+    set({
+      clips,
+      project: { ...state.project, duration: projectLength(clips) },
+    })
+    toast('Picture fitted', 'Video now loops for the length of the mix.')
+  },
+
+  setPictureAudio(enabled: boolean) {
+    snapshot()
+    const videoIds = new Set(state.tracks.filter((track) => track.kind === 'video').map((track) => track.id))
+    set({
+      clips: state.clips.map((clip) => (videoIds.has(clip.trackId) ? { ...clip, audioEnabled: enabled } : clip)),
+    })
+    toast(enabled ? 'Picture audio on' : 'Picture audio muted', enabled ? 'Original video sound is in the mix.' : 'Your music sits under the picture.')
+    if (state.playing && state.mode === 'studio') {
+      engine.play(state.project.duration, state.loop, state.loopStart, state.loopEnd)
+    }
+  },
+
   autoFade() {
     snapshot()
     const groups = new Map<string, Clip[]>()
@@ -726,7 +782,9 @@ export const actions = {
         set({ assets: [...state.assets, asset], selectedMediaId: id, busy: null })
         const trackItem = state.tracks.find((t) => t.kind === (kind === 'audio' ? 'audio' : 'video'))
         if (trackItem) actions.addClip(id, trackItem.id, lastEnd(trackItem.id))
-        toast('Imported', file.name)
+        if (kind === 'video') toast('Video on the picture track', 'Import a song, mute picture audio if needed, then Export MP4.')
+        else if (kind === 'audio') toast('Song on the mix', 'Export MP3 for audio or MP4 for the video.')
+        else toast('Imported', file.name)
       } catch {
         set({ busy: null })
         toast('Could not import', file.name)
@@ -841,7 +899,7 @@ export const actions = {
   async toggleRecord() {
     await engine.ensure()
     if (state.recording) {
-      engine.stopRecording()
+      void engine.stopRecording()
       set({ recording: false })
       return
     }
@@ -852,7 +910,7 @@ export const actions = {
   },
 
   async exportWav() {
-    set({ busy: 'Bouncing audio mix' })
+    set({ busy: 'Bouncing audio mix', exporting: 'audio', exportOpen: false })
     try {
       const blob = await engine.bounceWav(state.project.duration)
       download(blob, `${slug(state.project.name)}.wav`)
@@ -860,7 +918,69 @@ export const actions = {
     } catch {
       toast('Export failed', 'Try playing the project once, then export.')
     }
-    set({ busy: null })
+    set({ busy: null, exporting: null })
+  },
+
+  async exportMp3() {
+    set({ busy: 'Encoding MP3 mix', exporting: 'audio', exportOpen: false })
+    try {
+      const buffer = await engine.bounceMix(state.project.duration)
+      const blob = encodeMp3(buffer, 192)
+      download(blob, `${slug(state.project.name)}.mp3`)
+      toast('Audio exported', 'MP3 mixdown is downloading.')
+    } catch {
+      toast('MP3 export failed', 'Try WAV instead, or play the mix once first.')
+    }
+    set({ busy: null, exporting: null })
+  },
+
+  async exportVideo() {
+    if (state.exporting) return
+    if (state.mode !== 'studio') {
+      engine.setMode('studio')
+      set({ mode: 'studio', panel: null })
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    }
+    await engine.ensure()
+    const from = state.loop ? state.loopStart : 0
+    const end = state.loop ? state.loopEnd : state.project.duration
+    const duration = Math.max(0.5, end - from)
+    const size = aspectExportSize(state.project.aspect)
+    const metronome = state.project.metronome
+    set({
+      exporting: 'video',
+      busy: `Exporting video · 0s / ${duration.toFixed(0)}s`,
+      exportOpen: false,
+      project: { ...state.project, metronome: false },
+      playing: true,
+      recording: true,
+    })
+    try {
+      const { blob, mime } = await engine.bounceProgram(duration, size, from)
+      const ext = extensionForMime(mime)
+      download(blob, `${slug(state.project.name)}.${ext}`)
+      toast(
+        ext === 'mp4' ? 'MP4 exported' : 'Video exported',
+        ext === 'mp4'
+          ? 'Your mix video is downloading.'
+          : 'This browser encoded WebM. Chrome or Safari can export MP4.',
+      )
+    } catch {
+      toast('Video export failed', 'Play the mix once, then try Export again.')
+    }
+    set({
+      busy: null,
+      exporting: null,
+      recording: false,
+      playing: false,
+      time: 0,
+      project: { ...state.project, metronome },
+    })
+  },
+
+  openImporter(kind: 'audio' | 'video' | 'any') {
+    const id = kind === 'audio' ? 'se-import-audio' : kind === 'video' ? 'se-import-video' : 'se-import-any'
+    document.getElementById(id)?.click()
   },
 
   exportProject() {
@@ -878,26 +998,18 @@ export const actions = {
 
 let taps: number[] = []
 
-function makeClip(trackId: string, mediaId: string, start: number, duration: number): Clip {
-  return {
+function makeClip(trackId: string, mediaId: string, start: number, duration: number, extra: Partial<Clip> = {}): Clip {
+  return createClip({
     id: uid('clip'),
     trackId,
     mediaId,
     start,
     duration,
-    offset: 0,
-    gain: 1,
     fadeIn: 0.01,
     fadeOut: 0.08,
-    playbackRate: 1,
-    opacity: 1,
-    blend: 'source-over',
-    scale: 1,
-    x: 0,
-    y: 0,
-    hue: 32,
     text: 'SERIOUS EDITS',
-  }
+    ...extra,
+  })
 }
 
 function lastEnd(trackId: string): number {

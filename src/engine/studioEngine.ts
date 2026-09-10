@@ -1,7 +1,8 @@
-import type { Clip, Deck, LookId, MediaAsset, Track } from '../types'
-import { anySolo, clipAtTime, clipEnd, trackAudible } from '../lib/clips'
+import type { Clip, Deck, FitMode, LookId, MediaAsset, Track } from '../types'
+import { anySolo, clipAtTime, clipEnd, mediaLocalTime, trackAudible } from '../lib/clips'
 import { applyLook, drawLowerThird } from '../lib/looks'
 import { clamp, equalPower, fadeGain, filterFromKnob } from '../lib/mix'
+import { pickRecorderMime, VIDEO_MIME_CANDIDATES } from '../lib/picture'
 import { drawVisual } from '../lib/visuals'
 import { encodeWav } from '../lib/waveform'
 
@@ -103,6 +104,10 @@ class StudioEngine {
   private recorder: MediaRecorder | null = null
   private chunks: Blob[] = []
   recording = false
+  private notifyRecord = true
+  private cleanExport = false
+  private exportSize: { width: number; height: number } | null = null
+  private recorderMime = ''
   private freq = new Uint8Array(FFT / 2)
   private timeDomain = new Uint8Array(FFT)
   onTime?: (time: number) => void
@@ -308,7 +313,7 @@ class StudioEngine {
     for (const track of tracks) this.getOrMakeChain(track, soloed)
     for (const clip of clips) {
       const track = tracks.find((tr) => tr.id === clip.trackId)
-      if (!track) continue
+      if (!track || !clip.audioEnabled) continue
       const media = this.media.get(clip.mediaId)
       if (!media?.buffer) continue
       const start = clip.start
@@ -317,10 +322,17 @@ class StudioEngine {
       const source = this.ctx.createBufferSource()
       source.buffer = media.buffer
       source.playbackRate.value = clip.playbackRate
+      if (clip.loop) {
+        source.loop = true
+        source.loopStart = clip.offset
+        source.loopEnd = media.buffer.duration
+      }
       const gain = this.ctx.createGain()
       gain.connect(this.getOrMakeChain(track, soloed))
       source.connect(gain)
-      const offset = clip.offset + Math.max(0, t0 - start) * clip.playbackRate
+      const offset = clip.loop
+        ? mediaLocalTime(clip, Math.max(t0, start), media.buffer.duration)
+        : clip.offset + Math.max(0, t0 - start) * clip.playbackRate
       const when = now + Math.max(0, start - t0)
       const playDur = (end - Math.max(t0, start)) / clip.playbackRate
       const localAtStart = Math.max(0, t0 - start)
@@ -570,58 +582,85 @@ class StudioEngine {
     }
   }
 
-  async startRecording(): Promise<void> {
+  async startRecording(opts: { notify?: boolean } = {}): Promise<void> {
     await this.ensure()
     if (!this.canvas || !this.recordDest) return
+    this.notifyRecord = opts.notify !== false
     const canvasStream = this.canvas.captureStream(30)
     const mixed = new MediaStream([
       ...canvasStream.getVideoTracks(),
       ...this.recordDest.stream.getAudioTracks(),
     ])
     const mime = pickMime()
+    this.recorderMime = mime || 'video/webm'
     this.chunks = []
     this.recorder = new MediaRecorder(mixed, mime ? { mimeType: mime } : undefined)
     this.recorder.ondataavailable = (event) => {
       if (event.data.size) this.chunks.push(event.data)
     }
     this.recorder.onstop = () => {
-      const blob = new Blob(this.chunks, { type: mime || 'video/webm' })
-      this.onRecorded?.(blob, blob.type)
+      const blob = new Blob(this.chunks, { type: this.recorderMime })
       this.recording = false
+      if (this.notifyRecord) this.onRecorded?.(blob, blob.type)
     }
     this.recorder.start(200)
     this.recording = true
   }
 
-  stopRecording(): void {
-    if (this.recorder && this.recorder.state !== 'inactive') this.recorder.stop()
-    this.recorder = null
+  stopRecording(): Promise<Blob | null> {
+    const recorder = this.recorder
+    if (!recorder || recorder.state === 'inactive') {
+      this.recorder = null
+      this.recording = false
+      return Promise.resolve(null)
+    }
+    return new Promise((resolve) => {
+      recorder.addEventListener(
+        'stop',
+        () => {
+          const blob = new Blob(this.chunks, { type: this.recorderMime || 'video/webm' })
+          this.recorder = null
+          this.recording = false
+          resolve(blob)
+        },
+        { once: true },
+      )
+      recorder.stop()
+    })
   }
 
-  async bounceWav(duration: number): Promise<Blob> {
+  async bounceMix(duration: number): Promise<AudioBuffer> {
     await this.ensure()
     const sr = this.ctx!.sampleRate
-    const offline = new OfflineAudioContext(2, Math.floor(sr * duration), sr)
+    const offline = new OfflineAudioContext(2, Math.max(1, Math.floor(sr * duration)), sr)
     const tracks = this.getTracks()
     const clips = this.getClips()
     const soloed = anySolo(tracks)
     const master = offline.createGain()
-    master.gain.value = 0.9
+    master.gain.value = this.master?.gain.value ?? 0.9
     master.connect(offline.destination)
     for (const clip of clips) {
       const track = tracks.find((tr) => tr.id === clip.trackId)
-      if (!track || !trackAudible(track, soloed)) continue
+      if (!track || !clip.audioEnabled || !trackAudible(track, soloed)) continue
       const media = this.media.get(clip.mediaId)
       if (!media?.buffer) continue
       const source = offline.createBufferSource()
       source.buffer = media.buffer
       source.playbackRate.value = clip.playbackRate
+      if (clip.loop) {
+        source.loop = true
+        source.loopStart = clip.offset
+        source.loopEnd = media.buffer.duration
+      }
       const gain = offline.createGain()
       const vol = offline.createGain()
-      vol.gain.value = track.volume * clip.gain
+      vol.gain.value = track.volume
+      const pan = offline.createStereoPanner()
+      pan.pan.value = track.pan
       source.connect(gain)
       gain.connect(vol)
-      vol.connect(master)
+      vol.connect(pan)
+      pan.connect(master)
       applyFades(gain.gain, offline, clip.start, 0, clip, clip.duration)
       try {
         source.start(clip.start, clip.offset, clip.duration / clip.playbackRate)
@@ -629,8 +668,35 @@ class StudioEngine {
         continue
       }
     }
-    const rendered = await offline.startRendering()
-    return encodeWav(rendered)
+    return offline.startRendering()
+  }
+
+  async bounceWav(duration: number): Promise<Blob> {
+    return encodeWav(await this.bounceMix(duration))
+  }
+
+  async bounceProgram(
+    duration: number,
+    size: { width: number; height: number },
+    from = 0,
+  ): Promise<{ blob: Blob; mime: string }> {
+    await this.ensure()
+    if (!this.canvas) throw new Error('stage')
+    const end = from + duration
+    this.cleanExport = true
+    this.exportSize = size
+    this.loop = false
+    this.seek(from)
+    await nextFrames(2)
+    await this.startRecording({ notify: false })
+    this.play(end, false, 0, end)
+    await waitUntil(() => !this.playing || this.getTime() >= end - 0.04, duration + 2)
+    await waitMs(280)
+    const blob = (await this.stopRecording()) ?? new Blob([], { type: this.recorderMime })
+    this.cleanExport = false
+    this.exportSize = null
+    this.stop()
+    return { blob, mime: blob.type || this.recorderMime }
   }
 
   private startLoop(): void {
@@ -664,7 +730,7 @@ class StudioEngine {
       const media = this.media.get(clip.mediaId)
       const video = media?.video
       if (!video) continue
-      const local = clip.offset + (time - clip.start) * clip.playbackRate
+      const local = mediaLocalTime(clip, time, video.duration || 0)
       if (Math.abs(video.currentTime - local) > 0.12) video.currentTime = local
       if (video.paused) void video.play()
     }
@@ -675,9 +741,10 @@ class StudioEngine {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    const dpr = window.devicePixelRatio || 1
-    const w = canvas.clientWidth
-    const h = canvas.clientHeight
+    const exportSize = this.exportSize
+    const dpr = exportSize ? 1 : window.devicePixelRatio || 1
+    const w = exportSize?.width ?? canvas.clientWidth
+    const h = exportSize?.height ?? canvas.clientHeight
     if (w === 0 || h === 0) return
     canvas.width = Math.floor(w * dpr)
     canvas.height = Math.floor(h * dpr)
@@ -725,13 +792,13 @@ class StudioEngine {
         ctx.translate(w / 2 + clip.x, h / 2 + clip.y)
         ctx.scale(clip.scale, clip.scale)
         ctx.translate(-w / 2, -h / 2)
-        drawMedia(ctx, loaded.video, w, h)
+        drawMedia(ctx, loaded.video, w, h, clip.fit)
         drew = true
       } else if (loaded?.image) {
         ctx.translate(w / 2 + clip.x, h / 2 + clip.y)
         ctx.scale(clip.scale * (1 + bass * 0.04), clip.scale * (1 + bass * 0.04))
         ctx.translate(-w / 2, -h / 2)
-        drawMedia(ctx, loaded.image, w, h)
+        drawMedia(ctx, loaded.image, w, h, clip.fit)
         drew = true
       }
       ctx.restore()
@@ -789,7 +856,7 @@ class StudioEngine {
           opacity: 1,
         })
       } else if (loaded?.video) {
-        drawMedia(ctx, loaded.video, w, h)
+        drawMedia(ctx, loaded.video, w, h, 'cover')
       }
       ctx.restore()
     }
@@ -803,6 +870,7 @@ class StudioEngine {
     time: number,
     peak: number,
   ): void {
+    if (this.cleanExport) return
     ctx.fillStyle = 'rgba(0,0,0,0.35)'
     ctx.fillRect(16, h - 54, 168, 36)
     ctx.fillStyle = '#f0d29a'
@@ -920,19 +988,45 @@ function drawMedia(
   media: HTMLVideoElement | HTMLImageElement,
   w: number,
   h: number,
+  fit: FitMode = 'cover',
 ): void {
   const mw = 'videoWidth' in media ? media.videoWidth || media.width : media.width
   const mh = 'videoHeight' in media ? media.videoHeight || media.height : media.height
   if (!mw || !mh) return
-  const scale = Math.max(w / mw, h / mh)
+  const scale = fit === 'contain' ? Math.min(w / mw, h / mh) : Math.max(w / mw, h / mh)
   const dw = mw * scale
   const dh = mh * scale
   ctx.drawImage(media, (w - dw) / 2, (h - dh) / 2, dw, dh)
 }
 
 function pickMime(): string {
-  const types = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
-  return types.find((type) => MediaRecorder.isTypeSupported(type)) ?? ''
+  if (typeof MediaRecorder === 'undefined') return ''
+  return pickRecorderMime(VIDEO_MIME_CANDIDATES, (type) => MediaRecorder.isTypeSupported(type))
+}
+
+function nextFrames(count: number): Promise<void> {
+  return new Promise((resolve) => {
+    const step = (left: number) => {
+      if (left <= 0) resolve()
+      else requestAnimationFrame(() => step(left - 1))
+    }
+    step(count)
+  })
+}
+
+function waitMs(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function waitUntil(done: () => boolean, seconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    const start = performance.now()
+    const tick = () => {
+      if (done() || performance.now() - start > seconds * 1000) resolve()
+      else window.setTimeout(tick, 40)
+    }
+    tick()
+  })
 }
 
 function whichHue(color: string): number {

@@ -1,5 +1,30 @@
 import type { Clip } from '../types'
 
+export function createClip(
+  patch: Partial<Clip> & Pick<Clip, 'id' | 'trackId' | 'mediaId'>,
+): Clip {
+  return {
+    start: 0,
+    duration: 4,
+    offset: 0,
+    gain: 1,
+    fadeIn: 0,
+    fadeOut: 0,
+    playbackRate: 1,
+    opacity: 1,
+    blend: 'source-over',
+    scale: 1,
+    x: 0,
+    y: 0,
+    hue: 32,
+    text: '',
+    audioEnabled: true,
+    fit: 'cover',
+    loop: false,
+    ...patch,
+  }
+}
+
 export function clipEnd(clip: Clip): number {
   return clip.start + clip.duration
 }
@@ -64,4 +89,15 @@ export function trackAudible(
   if (track.muted) return false
   if (soloed && !track.solo) return false
   return true
+}
+
+export function mediaLocalTime(
+  clip: Pick<Clip, 'start' | 'offset' | 'playbackRate' | 'loop'>,
+  time: number,
+  mediaDuration: number,
+): number {
+  const local = clip.offset + (time - clip.start) * clip.playbackRate
+  if (!clip.loop || mediaDuration <= 0) return local
+  const wrapped = local % mediaDuration
+  return wrapped < 0 ? wrapped + mediaDuration : wrapped
 }

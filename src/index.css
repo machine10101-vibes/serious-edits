@@ -228,6 +228,18 @@ button {
   animation: pulse 1.2s ease infinite;
 }
 
+.export-btn {
+  border: 1px solid rgba(62, 224, 197, 0.35);
+  background: rgba(62, 224, 197, 0.12);
+  color: var(--teal);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 @keyframes pulse {
   50% { box-shadow: 0 0 0 6px rgba(255, 90, 122, 0.12); }
 }
@@ -276,10 +288,16 @@ button {
 }
 
 .filters,
+.import-row,
 .add-row {
   display: flex;
   gap: 6px;
   padding: 0 12px 8px;
+}
+
+.import-row .chip {
+  flex: 1;
+  justify-content: center;
 }
 
 .filters button {
@@ -644,7 +662,8 @@ button {
 }
 
 .inspector {
-  max-height: 200px;
+  max-height: 260px;
+  overflow: auto;
 }
 
 .inspect-grid {
@@ -970,6 +989,10 @@ button {
 
 .empty-actions {
   margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
 }
 
 .icon-btn {
@@ -1115,6 +1138,41 @@ button {
   font-size: 12px;
 }
 
+.export-card {
+  width: min(440px, 100%);
+}
+
+.export-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+
+.export-grid button {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  height: auto;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.export-grid button span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.export-grid .play span {
+  color: #5a4a20;
+}
+
 .knob-dial {
   touch-action: none;
 }
@@ -1170,10 +1228,10 @@ button {
     background: transparent;
     color: var(--muted);
     border-radius: 12px;
-    padding: 10px 6px;
-    font-size: 11px;
+    padding: 10px 4px;
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
@@ -1204,10 +1262,14 @@ button {
     left: 8px;
     right: 8px;
     bottom: calc(120px + env(safe-area-inset-bottom));
-    height: min(38vh, 360px);
+    height: min(42vh, 380px);
     max-height: none;
     z-index: 22;
     box-shadow: var(--shadow);
+  }
+
+  .app.panel-mixer .mixer {
+    height: min(50vh, 440px);
   }
 
   .app.panel-library .library,
@@ -1243,6 +1305,12 @@ button {
   .stage-caption,
   .top-actions .ghost {
     display: none;
+  }
+
+  .export-btn,
+  .rec,
+  .play {
+    display: inline-flex;
   }
 
   .jog {

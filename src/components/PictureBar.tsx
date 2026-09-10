@@ -8,6 +8,10 @@ export function PictureBar() {
   const subtitle = useStudio((s) => s.project.subtitle)
   const metronome = useStudio((s) => s.project.metronome)
   const follow = useStudio((s) => s.follow)
+  const pictureAudio = useStudio((s) => {
+    const videoIds = new Set(s.tracks.filter((track) => track.kind === 'video').map((track) => track.id))
+    return s.clips.some((clip) => videoIds.has(clip.trackId) && clip.audioEnabled)
+  })
 
   return (
     <div className="picture-bar">
@@ -47,8 +51,18 @@ export function PictureBar() {
       <button type="button" className="chip" onClick={actions.scorePicture}>
         Score
       </button>
+      <button type="button" className="chip" onClick={actions.fitPictureToMix}>
+        Fit
+      </button>
       <button type="button" className="chip" onClick={actions.autoFade}>
         Auto-fade
+      </button>
+      <button
+        type="button"
+        className={pictureAudio ? 'chip on' : 'chip'}
+        onClick={() => actions.setPictureAudio(!pictureAudio)}
+      >
+        Vid audio
       </button>
       <label className="lyric">
         Lower third

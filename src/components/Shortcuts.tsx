@@ -10,6 +10,7 @@ const ROWS = [
   ['G', 'Metronome'],
   ['F', 'Follow playhead'],
   ['1 / 2', 'Deck A / B'],
+  ['E', 'Export MP4 / MP3'],
   ['?', 'This guide'],
 ]
 
@@ -20,7 +21,7 @@ export function Shortcuts() {
     <div className="help-scrim" onClick={actions.toggleHelp}>
       <div className="help-card" onClick={(e) => e.stopPropagation()}>
         <h2>On the boards</h2>
-        <p>Everything stays in this tab. Mix, cut picture, then record.</p>
+        <p>Import video and music, mix, then export MP4 or MP3. Everything stays in this tab.</p>
         <ul>
           {ROWS.map(([key, label]) => (
             <li key={key}>

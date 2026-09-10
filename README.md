@@ -9,17 +9,18 @@ No account. No server. Everything runs locally in the browser with the Web Audio
 - **Studio timeline** with snap, trim, move, razor cut, markers, loop in/out, and follow-playhead
 - **Live mixer** — faders, EQ, mute, and solo take effect while the track is playing
 - **Picture tools** — 16:9 / 9:16 / 1:1 output, film/neon/noir/sunset/VHS looks, beat-reactive motion, lower thirds
-- **Score picture** places visuals on the beat grid; **Auto-fade** overlaps audio clips
+- **Score picture** places visuals on the beat grid; **Fit** loops video to the song; **Auto-fade** overlaps audio clips
+- **Picture audio** stays muted by default so your mix sits under the video
 - **DJ mode** with dual decks, sync, hot cues, beat jump, filter, EQ, and an equal-power crossfader
 - **Tap tempo**, metronome, undo, and a shortcuts overlay (`?`)
-- **Import** audio, video, and images, or start from a built-in demo session
-- **Export** a recorded video mix (WebM), a WAV bounce, or the project JSON
+- **Import** video, music, and images, or start from a built-in demo session
+- **Export MP4** (video mix at YouTube / Reels / square size), **MP3**, WAV, or the project JSON
 
 ### Keyboard
 
-Space play/pause · arrows skip beats (Shift = bar) · M marker · G metronome · F follow · L loop · Z/Y undo/redo · R record · 1/2 decks
+Space play/pause · arrows skip beats (Shift = bar) · M marker · G metronome · F follow · L loop · E export · Z/Y undo/redo · R record · 1/2 decks
 
-On a phone, use the **Library / Mixer / Clip / Arrange** dock. Tap **+** in the library to drop media at the playhead.
+On a phone, use the **Library / Mixer / Clip / Arrange / Export** dock. Tap **Video** or **Music** in the library, then **+** to drop at the playhead.
 
 ## Run locally
 
@@ -28,7 +29,7 @@ npm install
 npm run dev
 ```
 
-Open the printed local URL (usually `http://localhost:5173`). Chrome, Edge, or Firefox recommended.
+Open the printed local URL (usually `http://localhost:5173`). Chrome, Edge, or Safari recommended for MP4 export.
 
 ```bash
 npm test
@@ -38,14 +39,14 @@ npm run preview
 
 ## How to use
 
-1. Click **Demo** to load a 120 BPM house session, or drop files onto the window.
+1. Click **Import video**, then **Import music** — or load **Demo**.
 2. Press **Play**. Ride faders and EQ live. Pick a look and an aspect ratio for Reels or YouTube.
-3. **Score** to cut visuals to the beat. Edit the lower third for artist/title cards.
+3. **Fit** to loop the picture across the song. Edit the lower third for artist/title cards.
 4. Switch to **DJ**, sync a deck, set hot cues, then ride the crossfader.
-5. Hit **Record** to capture the picture and the mix, or **WAV** for an audio bounce.
+5. Hit **Export** for MP4 (picture + mix) or MP3 (audio). Record is still there for a live take.
 
 Media stays in this browser tab. Export anything you want to keep.
 
 ## Stack
 
-Vite, React, TypeScript, Web Audio, Canvas 2D, MediaRecorder.
+Vite, React, TypeScript, Web Audio, Canvas 2D, MediaRecorder, lamejs.
