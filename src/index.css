@@ -1323,6 +1323,16 @@ div.phone-hide {
     padding: 0;
   }
 
+  .picture-bar .chip {
+    flex-shrink: 0;
+  }
+
+  .mixer .eq-row,
+  .mixer .pan,
+  .master-strip .knob {
+    display: none;
+  }
+
   .timeline {
     --lane-h: 44px;
     --ruler-h: 24px;

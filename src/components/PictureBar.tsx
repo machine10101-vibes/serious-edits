@@ -27,6 +27,9 @@ export function PictureBar() {
           </button>
         ))}
       </div>
+      <button type="button" className="chip" onClick={actions.fitPictureToMix}>
+        Fit
+      </button>
       <div className="seg">
         {LOOKS.map((item) => (
           <button
@@ -39,9 +42,6 @@ export function PictureBar() {
           </button>
         ))}
       </div>
-      <button type="button" className="chip" onClick={actions.fitPictureToMix}>
-        Fit
-      </button>
       <div className="phone-hide">
         <button type="button" className={reactive ? 'chip on' : 'chip'} onClick={actions.toggleReactive}>
           Beat
