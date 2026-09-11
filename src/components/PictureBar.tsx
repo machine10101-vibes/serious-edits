@@ -39,39 +39,41 @@ export function PictureBar() {
           </button>
         ))}
       </div>
-      <button type="button" className={reactive ? 'chip on' : 'chip'} onClick={actions.toggleReactive}>
-        Beat
-      </button>
-      <button type="button" className={metronome ? 'chip on' : 'chip'} onClick={actions.toggleMetronome}>
-        Click
-      </button>
-      <button type="button" className={follow ? 'chip on' : 'chip'} onClick={actions.toggleFollow}>
-        Follow
-      </button>
-      <button type="button" className="chip" onClick={actions.scorePicture}>
-        Score
-      </button>
       <button type="button" className="chip" onClick={actions.fitPictureToMix}>
         Fit
       </button>
-      <button type="button" className="chip" onClick={actions.autoFade}>
-        Auto-fade
-      </button>
-      <button
-        type="button"
-        className={pictureAudio ? 'chip on' : 'chip'}
-        onClick={() => actions.setPictureAudio(!pictureAudio)}
-      >
-        Vid audio
-      </button>
-      <label className="lyric">
-        Lower third
-        <input
-          value={subtitle}
-          placeholder="Artist — Track"
-          onChange={(e) => actions.setSubtitle(e.target.value)}
-        />
-      </label>
+      <div className="phone-hide">
+        <button type="button" className={reactive ? 'chip on' : 'chip'} onClick={actions.toggleReactive}>
+          Beat
+        </button>
+        <button type="button" className={metronome ? 'chip on' : 'chip'} onClick={actions.toggleMetronome}>
+          Click
+        </button>
+        <button type="button" className={follow ? 'chip on' : 'chip'} onClick={actions.toggleFollow}>
+          Follow
+        </button>
+        <button type="button" className="chip" onClick={actions.scorePicture}>
+          Score
+        </button>
+        <button type="button" className="chip" onClick={actions.autoFade}>
+          Auto-fade
+        </button>
+        <button
+          type="button"
+          className={pictureAudio ? 'chip on' : 'chip'}
+          onClick={() => actions.setPictureAudio(!pictureAudio)}
+        >
+          Vid audio
+        </button>
+        <label className="lyric">
+          Lower third
+          <input
+            value={subtitle}
+            placeholder="Artist — Track"
+            onChange={(e) => actions.setSubtitle(e.target.value)}
+          />
+        </label>
+      </div>
     </div>
   )
 }

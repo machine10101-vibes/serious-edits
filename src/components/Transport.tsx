@@ -14,44 +14,46 @@ export function Transport() {
   return (
     <footer className="transport">
       <div className="transport-left">
-        <button type="button" className="play" onClick={() => void actions.togglePlay()}>
+        <button type="button" className="play" onClick={() => void actions.togglePlay()} aria-label={playing ? 'Pause' : 'Play'}>
           {playing ? <PauseIcon /> : <PlayIcon />}
         </button>
-        <button type="button" className="ghost" onClick={actions.stop}>
+        <button type="button" className="ghost" onClick={actions.stop} aria-label="Stop">
           <StopIcon />
         </button>
-        <button
-          type="button"
-          className={tool === 'pointer' ? 'chip on' : 'chip'}
-          onClick={() => actions.setTool('pointer')}
-        >
-          Move
-        </button>
-        <button
-          type="button"
-          className={tool === 'razor' ? 'chip on' : 'chip'}
-          onClick={() => actions.setTool('razor')}
-        >
-          <RazorIcon /> Cut
-        </button>
-        <button type="button" className="chip" onClick={() => actions.skip(-4)}>
-          −Bar
-        </button>
-        <button type="button" className="chip" onClick={() => actions.skip(4)}>
-          +Bar
-        </button>
-        <button type="button" className="chip" onClick={actions.loopIn}>
-          In
-        </button>
-        <button type="button" className="chip" onClick={actions.loopOut}>
-          Out
-        </button>
-        <button type="button" className="chip" onClick={actions.dropMarker}>
-          Mark
-        </button>
-        <button type="button" className="chip" onClick={actions.splitAtPlayhead}>
-          Split
-        </button>
+        <div className="phone-hide">
+          <button
+            type="button"
+            className={tool === 'pointer' ? 'chip on' : 'chip'}
+            onClick={() => actions.setTool('pointer')}
+          >
+            Move
+          </button>
+          <button
+            type="button"
+            className={tool === 'razor' ? 'chip on' : 'chip'}
+            onClick={() => actions.setTool('razor')}
+          >
+            <RazorIcon /> Cut
+          </button>
+          <button type="button" className="chip" onClick={() => actions.skip(-4)}>
+            −Bar
+          </button>
+          <button type="button" className="chip" onClick={() => actions.skip(4)}>
+            +Bar
+          </button>
+          <button type="button" className="chip" onClick={actions.loopIn}>
+            In
+          </button>
+          <button type="button" className="chip" onClick={actions.loopOut}>
+            Out
+          </button>
+          <button type="button" className="chip" onClick={actions.dropMarker}>
+            Mark
+          </button>
+          <button type="button" className="chip" onClick={actions.splitAtPlayhead}>
+            Split
+          </button>
+        </div>
       </div>
       <div className="timecode">
         <strong>{formatTimecode(time)}</strong>

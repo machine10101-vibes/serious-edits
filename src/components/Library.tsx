@@ -73,7 +73,7 @@ export function Library() {
           </div>
         ))}
       </div>
-      <p className="hint">Import a video, then a song. Tap + to drop at the playhead. Drag on desktop.</p>
+      <p className="hint">Import a video, then a song. Tap + to drop at the playhead. Drag on a desk.</p>
     </aside>
   )
 }

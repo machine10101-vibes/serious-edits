@@ -2,13 +2,11 @@ import { actions, useStudio } from '../store'
 
 export function Dock() {
   const panel = useStudio((s) => s.panel)
-  const mode = useStudio((s) => s.mode)
   const exportOpen = useStudio((s) => s.exportOpen)
   const items = [
-    { id: 'library' as const, label: 'Library' },
-    { id: 'mixer' as const, label: 'Mixer' },
+    { id: 'library' as const, label: 'Media' },
+    { id: 'mixer' as const, label: 'Mix' },
     { id: 'clip' as const, label: 'Clip' },
-    ...(mode === 'studio' ? [{ id: 'timeline' as const, label: 'Arrange' }] : []),
   ]
 
   return (

@@ -36,38 +36,39 @@ export function TopBar() {
         </button>
       </div>
 
-      <label className="bpm">
-        <span>BPM</span>
-        <input
-          type="number"
-          min={60}
-          max={200}
-          value={bpm}
-          onChange={(e) => actions.setBpm(Number(e.target.value))}
-        />
-      </label>
-
+      <div className="phone-hide">
+        <label className="bpm">
+          <span>BPM</span>
+          <input
+            type="number"
+            min={60}
+            max={200}
+            value={bpm}
+            onChange={(e) => actions.setBpm(Number(e.target.value))}
+          />
+        </label>
         <button type="button" className={snap ? 'chip on' : 'chip'} onClick={actions.toggleSnap}>
           Snap
         </button>
         <button type="button" className="chip" onClick={actions.tapTempo}>
           Tap
         </button>
-      <button type="button" className={loop ? 'chip on' : 'chip'} onClick={actions.toggleLoop}>
-        <LoopIcon /> Loop
-      </button>
+        <button type="button" className={loop ? 'chip on' : 'chip'} onClick={actions.toggleLoop}>
+          <LoopIcon /> Loop
+        </button>
+      </div>
 
       <div className="top-actions">
-        <button type="button" className="ghost" onClick={actions.undo}>
+        <button type="button" className="ghost phone-hide" onClick={actions.undo}>
           Undo
         </button>
-        <button type="button" className="ghost" onClick={() => void actions.loadDemo()}>
+        <button type="button" className="ghost phone-hide" onClick={() => void actions.loadDemo()}>
           Demo
         </button>
-        <button type="button" className="ghost" onClick={actions.newProject}>
+        <button type="button" className="ghost phone-hide" onClick={actions.newProject}>
           New
         </button>
-        <label className="ghost" htmlFor="se-import-any">
+        <label className="ghost phone-hide" htmlFor="se-import-any">
           Import
         </label>
         <button type="button" className="export-btn" onClick={actions.toggleExport}>
@@ -75,20 +76,20 @@ export function TopBar() {
         </button>
         <button
           type="button"
-          className={recording ? 'rec on' : 'rec'}
+          className={recording ? 'rec on phone-hide' : 'rec phone-hide'}
           onClick={() => void actions.toggleRecord()}
         >
           <RecordIcon />
           {recording ? 'Stop Rec' : 'Record'}
         </button>
-        <button type="button" className="play" onClick={() => void actions.togglePlay()}>
+        <button type="button" className="play phone-hide" onClick={() => void actions.togglePlay()}>
           {playing ? <PauseIcon /> : <PlayIcon />}
           {playing ? 'Pause' : 'Play'}
         </button>
-        <button type="button" className="ghost" onClick={actions.toggleHelp} title="Shortcuts">
+        <button type="button" className="ghost phone-hide" onClick={actions.toggleHelp} title="Shortcuts">
           ?
         </button>
-        <button type="button" className="ghost" onClick={actions.stop}>
+        <button type="button" className="ghost phone-hide" onClick={actions.stop}>
           <StopIcon />
         </button>
       </div>

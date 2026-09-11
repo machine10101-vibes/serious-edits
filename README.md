@@ -20,7 +20,7 @@ No account. No server. Everything runs locally in the browser with the Web Audio
 
 Space play/pause · arrows skip beats (Shift = bar) · M marker · G metronome · F follow · L loop · E export · Z/Y undo/redo · R record · 1/2 decks
 
-On a phone, use the **Library / Mixer / Clip / Arrange / Export** dock. Tap **Video** or **Music** in the library, then **+** to drop at the playhead.
+On a phone, **Export** stays in the top bar and **Play** sits in the transport. The timeline stays on screen; use the **Media / Mix / Clip / Export** dock for sheets. Tap **Video** or **Music**, then **+** to drop at the playhead.
 
 ## Run locally
 

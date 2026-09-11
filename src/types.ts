@@ -1,6 +1,6 @@
 export type AspectRatio = '16:9' | '9:16' | '1:1'
 export type LookId = 'clean' | 'cinematic' | 'neon' | 'noir' | 'sunset' | 'vhs'
-export type MobilePanel = 'library' | 'mixer' | 'clip' | 'timeline'
+export type MobilePanel = 'library' | 'mixer' | 'clip'
 export type StudioMode = 'studio' | 'dj'
 export type TrackKind = 'audio' | 'video'
 export type MediaKind = 'audio' | 'video' | 'image' | 'visual'

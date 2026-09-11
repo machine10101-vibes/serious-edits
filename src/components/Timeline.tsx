@@ -42,7 +42,7 @@ export function Timeline() {
   return (
     <section className="timeline">
       <div className="track-labels">
-        <div className="ruler-spacer">Arrangement</div>
+        <div className="ruler-spacer">Tracks</div>
         {tracks.map((track) => (
           <TrackLabel key={track.id} track={track} />
         ))}
@@ -69,8 +69,11 @@ export function Timeline() {
             const mediaId = e.dataTransfer.getData('text/media-id')
             if (!mediaId) return
             const rect = e.currentTarget.getBoundingClientRect()
-            const y = e.clientY - rect.top - 28
-            const trackIndex = Math.max(0, Math.min(tracks.length - 1, Math.floor(y / 52)))
+            const styles = getComputedStyle(e.currentTarget)
+            const laneH = parseFloat(styles.getPropertyValue('--lane-h')) || 52
+            const rulerH = parseFloat(styles.getPropertyValue('--ruler-h')) || 28
+            const y = e.clientY - rect.top - rulerH
+            const trackIndex = Math.max(0, Math.min(tracks.length - 1, Math.floor(y / laneH)))
             const track = tracks[trackIndex]
             const t = xToTime(e.clientX - rect.left, pps, 0)
             actions.dropMediaOnTimeline(mediaId, track?.id ?? null, t)
