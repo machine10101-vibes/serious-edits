@@ -1343,6 +1343,14 @@ div.phone-hide {
     z-index: 12;
   }
 
+  .topbar .more-pop {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    top: calc(48px + 6px);
+    width: auto;
+  }
+
   .logo {
     font-size: 14px;
     overflow: hidden;
