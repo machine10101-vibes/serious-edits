@@ -6,7 +6,6 @@ export function Stage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const clips = useStudio((s) => s.clips)
   const busy = useStudio((s) => s.busy)
-  const name = useStudio((s) => s.project.name)
   const aspect = useStudio((s) => s.project.aspect)
 
   useEffect(() => {
@@ -21,27 +20,23 @@ export function Stage() {
           <canvas ref={canvasRef} className="stage-canvas" />
           {clips.length === 0 && (
             <div className="stage-empty">
-              <p className="serif">The booth is yours.</p>
-              <p>Import a video and a song, or load the demo session to mix a full night in seconds.</p>
+              <p className="serif">Start a mix</p>
+              <p>Add a video and a song.</p>
               <div className="empty-actions">
-                <button type="button" className="play" onClick={() => void actions.loadDemo()}>
-                  Load demo session
-                </button>
-                <label className="chip" htmlFor="se-import-video">
-                  Import video
+                <label className="play" htmlFor="se-import-video">
+                  Add video
                 </label>
                 <label className="chip" htmlFor="se-import-audio">
-                  Import music
+                  Add music
                 </label>
+                <button type="button" className="ghost" onClick={() => void actions.loadDemo()}>
+                  Try a demo
+                </button>
               </div>
             </div>
           )}
         </div>
         {busy && <div className="busy">{busy}</div>}
-      </div>
-      <div className="stage-caption">
-        <span>{name}</span>
-        <span>{aspect} program output</span>
       </div>
     </section>
   )

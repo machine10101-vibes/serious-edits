@@ -1,5 +1,5 @@
 import { actions, useStudio } from '../store'
-import { LoopIcon, PauseIcon, PlayIcon, RecordIcon, StopIcon } from './Icons'
+import { LoopIcon, RecordIcon } from './Icons'
 
 export function TopBar() {
   const name = useStudio((s) => s.project.name)
@@ -7,17 +7,13 @@ export function TopBar() {
   const mode = useStudio((s) => s.mode)
   const snap = useStudio((s) => s.snap)
   const recording = useStudio((s) => s.recording)
-  const playing = useStudio((s) => s.playing)
   const loop = useStudio((s) => s.loop)
 
   return (
     <header className="topbar">
       <div className="brand">
         <span className="mark" />
-        <div>
-          <p className="logo">Serious Edits</p>
-          <p className="tag">Mix · Cut · Perform</p>
-        </div>
+        <p className="logo">Serious Edits</p>
       </div>
 
       <input
@@ -36,61 +32,56 @@ export function TopBar() {
         </button>
       </div>
 
-      <div className="phone-hide">
-        <label className="bpm">
-          <span>BPM</span>
-          <input
-            type="number"
-            min={60}
-            max={200}
-            value={bpm}
-            onChange={(e) => actions.setBpm(Number(e.target.value))}
-          />
-        </label>
-        <button type="button" className={snap ? 'chip on' : 'chip'} onClick={actions.toggleSnap}>
-          Snap
-        </button>
-        <button type="button" className="chip" onClick={actions.tapTempo}>
-          Tap
-        </button>
-        <button type="button" className={loop ? 'chip on' : 'chip'} onClick={actions.toggleLoop}>
-          <LoopIcon /> Loop
-        </button>
-      </div>
-
       <div className="top-actions">
-        <button type="button" className="ghost phone-hide" onClick={actions.undo}>
-          Undo
-        </button>
-        <button type="button" className="ghost phone-hide" onClick={() => void actions.loadDemo()}>
-          Demo
-        </button>
-        <button type="button" className="ghost phone-hide" onClick={actions.newProject}>
-          New
-        </button>
-        <label className="ghost phone-hide" htmlFor="se-import-any">
-          Import
-        </label>
+        <details className="more-menu">
+          <summary>More</summary>
+          <div className="more-pop">
+            <label className="bpm">
+              <span>BPM</span>
+              <input
+                type="number"
+                min={60}
+                max={200}
+                value={bpm}
+                onChange={(e) => actions.setBpm(Number(e.target.value))}
+              />
+            </label>
+            <button type="button" className={snap ? 'chip on' : 'chip'} onClick={actions.toggleSnap}>
+              Snap
+            </button>
+            <button type="button" className="chip" onClick={actions.tapTempo}>
+              Tap
+            </button>
+            <button type="button" className={loop ? 'chip on' : 'chip'} onClick={actions.toggleLoop}>
+              <LoopIcon /> Loop
+            </button>
+            <button type="button" className="ghost" onClick={actions.undo}>
+              Undo
+            </button>
+            <button type="button" className="ghost" onClick={() => void actions.loadDemo()}>
+              Demo
+            </button>
+            <button type="button" className="ghost" onClick={actions.newProject}>
+              New
+            </button>
+            <label className="ghost" htmlFor="se-import-any">
+              Import
+            </label>
+            <button
+              type="button"
+              className={recording ? 'rec on' : 'rec'}
+              onClick={() => void actions.toggleRecord()}
+            >
+              <RecordIcon />
+              {recording ? 'Stop rec' : 'Record'}
+            </button>
+            <button type="button" className="ghost" onClick={actions.toggleHelp}>
+              Keys
+            </button>
+          </div>
+        </details>
         <button type="button" className="export-btn" onClick={actions.toggleExport}>
           Export
-        </button>
-        <button
-          type="button"
-          className={recording ? 'rec on phone-hide' : 'rec phone-hide'}
-          onClick={() => void actions.toggleRecord()}
-        >
-          <RecordIcon />
-          {recording ? 'Stop Rec' : 'Record'}
-        </button>
-        <button type="button" className="play phone-hide" onClick={() => void actions.togglePlay()}>
-          {playing ? <PauseIcon /> : <PlayIcon />}
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <button type="button" className="ghost phone-hide" onClick={actions.toggleHelp} title="Shortcuts">
-          ?
-        </button>
-        <button type="button" className="ghost phone-hide" onClick={actions.stop}>
-          <StopIcon />
         </button>
       </div>
     </header>

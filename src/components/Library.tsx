@@ -1,25 +1,14 @@
-import { useMemo, useState } from 'react'
 import { actions, useStudio } from '../store'
 import { ImportIcon } from './Icons'
 
 export function Library() {
   const assets = useStudio((s) => s.assets)
   const selected = useStudio((s) => s.selectedMediaId)
-  const [filter, setFilter] = useState<'all' | 'audio' | 'video' | 'visual'>('all')
-  const shown = useMemo(
-    () =>
-      assets.filter((asset) => {
-        if (filter === 'all') return true
-        if (filter === 'video') return asset.kind === 'video' || asset.kind === 'image'
-        return asset.kind === filter || (filter === 'visual' && asset.kind === 'visual')
-      }),
-    [assets, filter],
-  )
 
   return (
     <aside className="library">
       <div className="panel-head">
-        <h2>Library</h2>
+        <h2>Media</h2>
         <button type="button" className="sheet-close" onClick={() => actions.setPanel(null)}>
           Done
         </button>
@@ -35,15 +24,8 @@ export function Library() {
           Music
         </label>
       </div>
-      <div className="filters">
-        {(['all', 'audio', 'video', 'visual'] as const).map((id) => (
-          <button key={id} type="button" className={filter === id ? 'on' : ''} onClick={() => setFilter(id)}>
-            {id}
-          </button>
-        ))}
-      </div>
       <div className="asset-list">
-        {shown.map((asset) => (
+        {assets.map((asset) => (
           <div key={asset.id} className={selected === asset.id ? 'asset-row on' : 'asset-row'}>
             <button
               type="button"
@@ -73,7 +55,6 @@ export function Library() {
           </div>
         ))}
       </div>
-      <p className="hint">Import a video, then a song. Tap + to drop at the playhead. Drag on a desk.</p>
     </aside>
   )
 }

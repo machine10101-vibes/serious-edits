@@ -1,11 +1,9 @@
-import { formatBars, formatTimecode } from '../lib/time'
+import { formatTimecode } from '../lib/time'
 import { actions, useStudio } from '../store'
 import { PauseIcon, PlayIcon, RazorIcon, StopIcon } from './Icons'
-import { Meter } from './Meter'
 
 export function Transport() {
   const time = useStudio((s) => s.time)
-  const bpm = useStudio((s) => s.project.bpm)
   const playing = useStudio((s) => s.playing)
   const pps = useStudio((s) => s.pixelsPerSecond)
   const tool = useStudio((s) => s.tool)
@@ -35,45 +33,22 @@ export function Transport() {
           >
             <RazorIcon /> Cut
           </button>
-          <button type="button" className="chip" onClick={() => actions.skip(-4)}>
-            −Bar
-          </button>
-          <button type="button" className="chip" onClick={() => actions.skip(4)}>
-            +Bar
-          </button>
-          <button type="button" className="chip" onClick={actions.loopIn}>
-            In
-          </button>
-          <button type="button" className="chip" onClick={actions.loopOut}>
-            Out
-          </button>
-          <button type="button" className="chip" onClick={actions.dropMarker}>
-            Mark
-          </button>
-          <button type="button" className="chip" onClick={actions.splitAtPlayhead}>
-            Split
-          </button>
         </div>
       </div>
       <div className="timecode">
         <strong>{formatTimecode(time)}</strong>
-        <em>
-          {formatBars(time, bpm)} · {duration.toFixed(0)}s
-        </em>
+        <em>{duration.toFixed(0)}s</em>
       </div>
-      <div className="transport-right">
-        <Meter vertical={false} />
-        <label className="zoom">
-          Zoom
-          <input
-            type="range"
-            min={16}
-            max={220}
-            value={pps}
-            onChange={(e) => actions.setZoom(Number(e.target.value))}
-          />
-        </label>
-      </div>
+      <label className="zoom phone-hide">
+        Zoom
+        <input
+          type="range"
+          min={16}
+          max={220}
+          value={pps}
+          onChange={(e) => actions.setZoom(Number(e.target.value))}
+        />
+      </label>
     </footer>
   )
 }

@@ -11,28 +11,27 @@ export function ExportMenu() {
   return (
     <div className="help-scrim" onClick={actions.toggleExport}>
       <div className="help-card export-card" onClick={(e) => e.stopPropagation()}>
-        <h2>Export the mix</h2>
-        <p>Import a video, drop a song under it, then bounce MP4 or MP3.</p>
+        <h2>Export</h2>
+        <p>Download the picture mix or the audio.</p>
         <div className="export-grid">
           <button type="button" className="play" disabled={Boolean(exporting)} onClick={() => void actions.exportVideo()}>
-            Export MP4
-            <span>Video · {aspect}{loop ? ' · loop region' : ''}</span>
+            MP4
+            <span>Video · {aspect}{loop ? ' · loop' : ''}</span>
           </button>
           <button type="button" className="chip" disabled={Boolean(exporting)} onClick={() => void actions.exportMp3()}>
-            Export MP3
-            <span>Audio mix</span>
+            MP3
+            <span>Audio</span>
           </button>
           <button type="button" className="chip" disabled={Boolean(exporting)} onClick={() => void actions.exportWav()}>
-            Export WAV
-            <span>Uncompressed</span>
+            WAV
+            <span>Audio</span>
           </button>
           <button type="button" className="chip" onClick={actions.exportProject}>
-            Save JSON
-            <span>Timeline only</span>
+            JSON
+            <span>Project</span>
           </button>
         </div>
         {busy && <p className="hint">{busy}</p>}
-        <p className="hint">MP4 needs Chrome, Edge, or Safari. Other browsers download WebM. Turn Loop on to export only the in/out region. Picture audio stays muted unless you turn it on.</p>
         <button type="button" className="ghost" onClick={actions.toggleExport}>
           Close
         </button>

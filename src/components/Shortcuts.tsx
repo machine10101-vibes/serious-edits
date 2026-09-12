@@ -4,13 +4,9 @@ const ROWS = [
   ['Space', 'Play / pause'],
   ['← →', 'Skip a beat'],
   ['Shift + arrows', 'Skip a bar'],
-  ['M', 'Drop a marker'],
-  ['Z / Y', 'Undo / redo'],
+  ['E', 'Export'],
   ['L', 'Loop'],
-  ['G', 'Metronome'],
-  ['F', 'Follow playhead'],
-  ['1 / 2', 'Deck A / B'],
-  ['E', 'Export MP4 / MP3'],
+  ['Z / Y', 'Undo / redo'],
   ['?', 'This guide'],
 ]
 
@@ -20,8 +16,8 @@ export function Shortcuts() {
   return (
     <div className="help-scrim" onClick={actions.toggleHelp}>
       <div className="help-card" onClick={(e) => e.stopPropagation()}>
-        <h2>On the boards</h2>
-        <p>Import video and music, mix, then export MP4 or MP3. Everything stays in this tab.</p>
+        <h2>Keys</h2>
+        <p>Add a video and a song, mix, then export.</p>
         <ul>
           {ROWS.map(([key, label]) => (
             <li key={key}>

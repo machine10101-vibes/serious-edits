@@ -98,7 +98,6 @@ export function App() {
 
   return (
     <div className={`app panel-${panel ?? 'none'}`}>
-      <div className="grain" />
       <TopBar />
       <div className="workspace">
         <Library />

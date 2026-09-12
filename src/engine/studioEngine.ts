@@ -867,27 +867,17 @@ class StudioEngine {
   private drawHud(
     ctx: CanvasRenderingContext2D,
     w: number,
-    h: number,
-    time: number,
-    peak: number,
+    _h: number,
+    _time: number,
+    _peak: number,
   ): void {
     if (this.cleanExport) return
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'
-    ctx.fillRect(16, h - 54, 168, 36)
-    ctx.fillStyle = '#f0d29a'
-    ctx.font = '500 13px "IBM Plex Mono", monospace'
-    const mm = String(Math.floor(time / 60)).padStart(2, '0')
-    const ss = String(Math.floor(time % 60)).padStart(2, '0')
-    const ms = String(Math.floor((time % 1) * 1000)).padStart(3, '0')
-    ctx.fillText(`${mm}:${ss}.${ms}`, 28, h - 30)
     if (this.recording) {
       ctx.fillStyle = 'rgba(255,90,122,0.9)'
       ctx.beginPath()
       ctx.arc(w - 28, 28, 7, 0, Math.PI * 2)
       ctx.fill()
     }
-    ctx.fillStyle = `rgba(62,224,197,${0.2 + peak * 0.7})`
-    ctx.fillRect(w - 18, h - 24 - peak * (h * 0.4), 6, peak * (h * 0.4))
   }
 }
 

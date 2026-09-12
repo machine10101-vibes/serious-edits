@@ -11,7 +11,7 @@ export function Inspector() {
 
   if (!clip || !clipId) {
     return (
-      <aside className="inspector">
+      <aside className="inspector is-empty">
         <div className="panel-head">
           <h2>Inspector</h2>
           <button type="button" className="sheet-close" onClick={() => actions.setPanel(null)}>

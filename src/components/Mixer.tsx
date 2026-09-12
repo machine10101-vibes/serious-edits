@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { actions, useStudio } from '../store'
 import { Knob } from './Knob'
 import { Meter } from './Meter'
@@ -6,15 +7,19 @@ export function Mixer() {
   const tracks = useStudio((s) => s.tracks)
   const selected = useStudio((s) => s.selectedTrackId)
   const master = useStudio((s) => s.master)
+  const [eq, setEq] = useState(false)
 
   return (
-    <aside className="mixer">
+    <aside className={eq ? 'mixer show-eq' : 'mixer'}>
       <div className="panel-head">
         <h2>Mixer</h2>
         <button type="button" className="sheet-close" onClick={() => actions.setPanel(null)}>
           Done
         </button>
         <div className="add-row">
+          <button type="button" className={eq ? 'chip on' : 'chip'} onClick={() => setEq((open) => !open)}>
+            EQ
+          </button>
           <button type="button" className="chip" onClick={() => actions.addTrack('audio')}>
             + Audio
           </button>
@@ -104,6 +109,7 @@ export function Mixer() {
         ))}
         <div className="strip master-strip">
           <div className="strip-name gold">Master</div>
+          <div className="eq-row">
           <Knob
             label="Filter"
             value={master.filter}
@@ -137,6 +143,7 @@ export function Mixer() {
             size={40}
             onChange={(drive) => actions.updateMaster('drive', drive)}
           />
+          </div>
           <div className="fader-row">
             <input
               className="fader"

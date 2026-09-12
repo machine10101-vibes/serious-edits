@@ -1,3 +1,4 @@
+import type { LookId } from '../types'
 import { ASPECTS, LOOKS } from '../types'
 import { actions, useStudio } from '../store'
 
@@ -27,53 +28,54 @@ export function PictureBar() {
           </button>
         ))}
       </div>
+      <label className="look-pick">
+        Look
+        <select value={look} onChange={(e) => actions.setLook(e.target.value as LookId)} aria-label="Look">
+          {LOOKS.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
       <button type="button" className="chip" onClick={actions.fitPictureToMix}>
         Fit
       </button>
-      <div className="seg">
-        {LOOKS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={look === item.id ? 'on' : ''}
-            onClick={() => actions.setLook(item.id)}
-          >
-            {item.label}
+      <details className="more-menu">
+        <summary>Edit</summary>
+        <div className="more-pop">
+          <button type="button" className={reactive ? 'chip on' : 'chip'} onClick={actions.toggleReactive}>
+            Beat
           </button>
-        ))}
-      </div>
-      <div className="phone-hide">
-        <button type="button" className={reactive ? 'chip on' : 'chip'} onClick={actions.toggleReactive}>
-          Beat
-        </button>
-        <button type="button" className={metronome ? 'chip on' : 'chip'} onClick={actions.toggleMetronome}>
-          Click
-        </button>
-        <button type="button" className={follow ? 'chip on' : 'chip'} onClick={actions.toggleFollow}>
-          Follow
-        </button>
-        <button type="button" className="chip" onClick={actions.scorePicture}>
-          Score
-        </button>
-        <button type="button" className="chip" onClick={actions.autoFade}>
-          Auto-fade
-        </button>
-        <button
-          type="button"
-          className={pictureAudio ? 'chip on' : 'chip'}
-          onClick={() => actions.setPictureAudio(!pictureAudio)}
-        >
-          Vid audio
-        </button>
-        <label className="lyric">
-          Lower third
-          <input
-            value={subtitle}
-            placeholder="Artist — Track"
-            onChange={(e) => actions.setSubtitle(e.target.value)}
-          />
-        </label>
-      </div>
+          <button type="button" className={metronome ? 'chip on' : 'chip'} onClick={actions.toggleMetronome}>
+            Click
+          </button>
+          <button type="button" className={follow ? 'chip on' : 'chip'} onClick={actions.toggleFollow}>
+            Follow
+          </button>
+          <button type="button" className="chip" onClick={actions.scorePicture}>
+            Score
+          </button>
+          <button type="button" className="chip" onClick={actions.autoFade}>
+            Auto-fade
+          </button>
+          <button
+            type="button"
+            className={pictureAudio ? 'chip on' : 'chip'}
+            onClick={() => actions.setPictureAudio(!pictureAudio)}
+          >
+            Picture audio
+          </button>
+          <label className="lyric">
+            Title
+            <input
+              value={subtitle}
+              placeholder="Artist — Track"
+              onChange={(e) => actions.setSubtitle(e.target.value)}
+            />
+          </label>
+        </div>
+      </details>
     </div>
   )
 }
